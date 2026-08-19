@@ -97,13 +97,13 @@ theorem bipartite_iff_two_coloring {V : Type u} (G : SimpleGraph V) :
     rintro ⟨V₀, V₁, h0non, h1non, hcover, hdisj, h00, h11⟩
     let f : V → Bool := fun v => if v ∈ V₀ then false else true
     refine ⟨f, ?_, ?_⟩
-    · -- f is surjective
+    · -- The coloring `f` is surjective.
       intro b
       cases b
-      · -- value false: some vertex of V₀
+      · -- Some vertex of `V₀` is colored false.
         rcases h0non with ⟨v0, hv0⟩
         exact ⟨v0, by simp [f, hv0]⟩
-      · -- value true: some vertex of V₁ (which avoids V₀ by disjointness)
+      · -- Some vertex of `V₁` (which avoids `V₀` by disjointness) is colored true.
         rcases h1non with ⟨v1, hv1⟩
         have hv1not : v1 ∉ V₀ := by
           intro hv1₀
@@ -111,7 +111,7 @@ theorem bipartite_iff_two_coloring {V : Type u} (G : SimpleGraph V) :
           rw [hdisj] at this
           exact this
         exact ⟨v1, by simp [f, hv1not]⟩
-    · -- no monochromatic edge
+    · -- No edge is monochromatic.
       intro v w hE
       by_cases hv : v ∈ V₀
       · have hw : w ∉ V₀ := by
@@ -137,24 +137,24 @@ theorem bipartite_iff_two_coloring {V : Type u} (G : SimpleGraph V) :
     let V₀ : Set V := {v | f v = false}
     let V₁ : Set V := {v | f v = true}
     refine ⟨V₀, V₁, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · -- V₀ nonempty (surjectivity at false)
+    · -- `V₀` is nonempty (surjectivity at false).
       rcases hsurj false with ⟨v, hv⟩
       exact ⟨v, hv⟩
-    · -- V₁ nonempty (surjectivity at true)
+    · -- `V₁` is nonempty (surjectivity at true).
       rcases hsurj true with ⟨v, hv⟩
       exact ⟨v, hv⟩
-    · -- cover: Bool is two-valued
+    · -- The cover is trivial: `Bool` is two-valued.
       intro v
       cases h : f v
       · left; exact h
       · right; exact h
-    · -- disjoint
+    · -- The two parts are disjoint.
       ext v
       simp [V₀, V₁]
-    · -- no internal edges in V₀
+    · -- There are no internal edges in `V₀`.
       intro v w hv hw hE
       exact (hcol hE) (by rw [hv, hw])
-    · -- no internal edges in V₁
+    · -- There are no internal edges in `V₁`.
       intro v w hv hw hE
       exact (hcol hE) (by rw [hv, hw])
 
@@ -202,10 +202,10 @@ lemma finite_subgraph_satisfiable {V : Type u}
   -- `haveI` registers `Finite T₀` so `Set.finite_range` below can use it as an instance.
   set_option linter.style.haveILetI false in
   by_cases hT0empty : T₀ = ∅
-  · -- empty finite subset: trivially satisfiable
+  · -- An empty finite subset is trivially satisfiable.
     rw [hT0empty]
     exact empty_satisfiable
-  · -- nonempty: build the finite vertex set V₀ from T₀'s edges
+  · -- A nonempty subset: build the finite vertex set `V₀` from `T₀`'s edges.
     rcases (Set.nonempty_iff_ne_empty.mpr hT0empty) with ⟨w0, hw0⟩
     let edgeOf : T₀ → V × V := fun x => Classical.choose (hT0sub x.2)
     have edgeOf_spec : ∀ x : T₀,
@@ -235,11 +235,11 @@ lemma finite_subgraph_satisfiable {V : Type u}
       refine ⟨e.1, ?_, e.2, ?_, hne⟩
       · exact ⟨⟨w0, hw0⟩, Or.inl rfl⟩
       · exact ⟨⟨w0, hw0⟩, Or.inr rfl⟩
-    -- finite-subgraph hypothesis, with the two-coloring lemma, give a two-coloring f of the induced graph
+    -- The finite-subgraph hypothesis, with the two-coloring lemma, yields a two-coloring `f` of the induced graph.
     rcases hfinite V₀ hV0Fin hV0Nontriv with hBip
     rcases (bipartite_iff_two_coloring (SimpleGraph.induce V₀ G)).mp hBip with
       ⟨f, hsurj, hprop⟩
-    -- global assignment: encode a vertex as its color when it lies in V₀, else false
+    -- Global assignment: encode a vertex as its color when it lies in `V₀`, else false.
     let t : TruthAssignment :=
       fun n => if h : ∃ v : V, v ∈ V₀ ∧ enc v = n then f ⟨Classical.choose h, (Classical.choose_spec h).1⟩ else false
     refine ⟨t, ?_⟩
@@ -250,7 +250,7 @@ lemma finite_subgraph_satisfiable {V : Type u}
     have hxEq : x = edgeProposition enc e.1 e.2 := (edgeOf_spec x₀).2
     have hmem1 : e.1 ∈ V₀ := ⟨x₀, Or.inl rfl⟩
     have hmem2 : e.2 ∈ V₀ := ⟨x₀, Or.inr rfl⟩
-    -- the two encoded vertices pick up exactly their coloring (enc is injective)
+    -- The two encoded vertices pick up exactly their coloring (because `enc` is injective).
     have hte1 : t (enc e.1) = f ⟨e.1, hmem1⟩ := by
       dsimp [t]
       have hEx : ∃ v : V, v ∈ V₀ ∧ enc v = enc e.1 := ⟨e.1, hmem1, rfl⟩
@@ -261,7 +261,7 @@ lemma finite_subgraph_satisfiable {V : Type u}
       have hEx : ∃ v : V, v ∈ V₀ ∧ enc v = enc e.2 := ⟨e.2, hmem2, rfl⟩
       rw [dite_eq_left hEx]
       exact congrArg f (Subtype.ext (henc (Classical.choose_spec hEx).2))
-    -- different colors on the edge, hence the XOR gadget evaluates to true
+    -- The edge carries two different colors, hence its XOR gadget evaluates to true.
     have hprop' : f ⟨e.1, hmem1⟩ ≠ f ⟨e.2, hmem2⟩ := by
       have hAdj : (SimpleGraph.induce V₀ G).Adj ⟨e.1, hmem1⟩ ⟨e.2, hmem2⟩ := by
         exact hE
@@ -299,9 +299,9 @@ theorem compactness_bipartite {V : Type u} [Countable V] [Infinite V]
     Bipartite G := by
   classical
   by_cases hedgeless : ∀ v w : V, ¬ G.Adj v w
-  · -- edgeless: split V directly into two nonempty parts (both have no internal edges)
+  · -- Edgeless case: split V directly into two nonempty parts (both have no internal edges).
     rcases (by
-      -- V is infinite, so it has two distinct vertices
+      -- V is infinite, so it has two distinct vertices.
       by_contra hnot
       push Not at hnot
       have hsub : Subsingleton V := Subsingleton.intro (fun a b => hnot a b)
@@ -323,24 +323,24 @@ theorem compactness_bipartite {V : Type u} [Countable V] [Infinite V]
       exact hedgeless v w hE
     · intro v w hv hw hE
       exact hedgeless v w hE
-  · -- has an edge: use compactness
+  · -- Has-an-edge case: use compactness.
     rcases Countable.exists_injective_nat V with ⟨enc, henc⟩
     let Th : Set Proposition := graphTheory G enc
-    -- every finite subset of Th is satisfiable (the finite-subgraph argument)
+    -- Every finite subset of Th is satisfiable (the finite-subgraph argument).
     have hfin : ∀ T₀ : Set Proposition, T₀ ⊆ Th → T₀.Finite → Satisfiable T₀ := by
       intro T₀ hsub hfin
       exact finite_subgraph_satisfiable G hfinite enc henc hsub hfin
-    -- compactness makes Th consistent, then model existence supplies a satisfying assignment
+    -- Compactness makes Th consistent, then model existence supplies a satisfying assignment.
     have hcons : Consistent Th := compactness_consistent (by
       intro T₀ hfinT0 hsub
       exact consistent_of_satisfiable (hfin T₀ hsub hfinT0))
     rcases model_existence hcons with ⟨t, hSat⟩
-    -- a real edge, to witness surjectivity of the coloring below
+    -- A real edge is present, to witness surjectivity of the coloring below.
     push Not at hedgeless
     rcases hedgeless with ⟨v0, w0, hE0⟩
     let f : V → Bool := fun v => t (enc v)
     refine (bipartite_iff_two_coloring G).mpr ⟨f, ?_, ?_⟩
-    · -- surjective: the edge forces both color values to occur
+    · -- Surjectivity: the edge forces both color values to occur.
       have hneq_edge : t (enc v0) ≠ t (enc w0) := by
         have hEdgeIn : edgeProposition enc v0 w0 ∈ Th := ⟨(v0, w0), hE0, rfl⟩
         have hEval : eval t (edgeProposition enc v0 w0) = true := hSat (edgeProposition enc v0 w0) hEdgeIn
@@ -361,7 +361,7 @@ theorem compactness_bipartite {V : Type u} [Countable V] [Infinite V]
             · rfl
           exact ⟨w0, by simpa [f] using hw⟩
         · exact ⟨v0, by simpa [f] using h⟩
-    · -- distinct colors on every edge: the edge gadget is in Th and must be true
+    · -- Distinct colors on every edge: the edge gadget is in Th and must be true.
       intro v w hE
       have hEdgeIn : edgeProposition enc v w ∈ Th := ⟨(v, w), hE, rfl⟩
       have hEval : eval t (edgeProposition enc v w) = true := hSat (edgeProposition enc v w) hEdgeIn

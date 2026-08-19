@@ -103,10 +103,10 @@ lemma nat_le_sum_of_mem (x : Nat) (l : List Nat) (h : x ∈ l) : x ≤ l.sum := 
   | nil => cases h
   | cons y ys ih =>
     cases h with
-    | head =>      -- x = y, so x ≤ y + ys.sum
+    | head => -- If `x = y` (the head of the list), then `x ≤ y + ys.sum` is immediate.
       rw [List.sum_cons]
       exact Nat.le_add_right x ys.sum
-    | tail _ h_tail => -- x ∈ ys, use induction hypothesis
+    | tail _ h_tail => -- If `x ∈ ys`, the induction hypothesis applies.
       rw [List.sum_cons]
       apply Nat.le_trans (ih h_tail)
       exact Nat.le_add_left ys.sum y
@@ -119,13 +119,13 @@ lemma size_arg_lt (a : A) (ha : Arity.arity a > 0) (args : Fin (Arity.arity a) �
     (i : Fin (Arity.arity a)) :
     size (args i) < size (.app a ha args) := by
   simp only [size]
-  -- goal: size (args i) < 1 + sum
-  rw [Nat.add_comm]   -- now goal: size (args i) < sum + 1
+  -- The goal reduces to `size (args i) < 1 + sum`.
+  rw [Nat.add_comm] -- Commutativity turns this into `size (args i) < sum + 1`.
   have hmem : size (args i) ∈ List.ofFn (fun j => size (args j)) := by
     simp [List.mem_ofFn]
   have h_le : size (args i) ≤ (List.ofFn (fun j => size (args j))).sum :=
     nat_le_sum_of_mem _ _ hmem
-  exact Nat.lt_succ_of_le h_le   -- works because sum + 1 = sum.succ
+  exact Nat.lt_succ_of_le h_le -- The latter holds because `sum + 1 = sum.succ`.
 
 -- Every (nonempty) word contains a nullary letter somewhere.  For an atom the
 -- letter is itself; for an application, ha : arity a > 0 guarantees at least one
@@ -135,9 +135,9 @@ theorem exists_nullary (f : AdmissibleWord A) : ∃ a : A, Arity.arity a = 0 := 
   induction f with
   | atom a ha => exact ⟨a, ha⟩
   | app a ha args ih =>
-    -- ha : arity a > 0, so there is at least one argument.
+    -- ha : arity a > 0, so there is at least one argument to hand to the induction.
     have hpos : 0 < Arity.arity a := ha
-    exact ih ⟨0, hpos⟩  -- induction hypothesis applies to any argument
+    exact ih ⟨0, hpos⟩ -- The induction hypothesis applies to any argument.
 
 -- ----------------------------------------------------------------------------
 -- Paths and unique readability

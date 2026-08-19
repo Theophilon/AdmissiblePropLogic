@@ -138,7 +138,7 @@ theorem tautology_disj_elim {P Q R : Proposition} :
 -- 
 -- *From P and P → Q, infer Q.*
 
--- Definition — Formal proof / provable (use the experiment one, this definition is clanky to work with)
+-- Definition — Formal proof / provable (stated for completeness of exposition; the working definition is the experiment encoding below, which this one is clanky to manipulate)
 -- Let T ⊆ Prop and P ∈ Prop. A **formal proof** of P from T is a sequence Q₁, ..., Qₙ such that Qₙ = P and for every k ∈ {1, ..., n},
 -- (1) Qₖ ∈ T;
 -- (2) Qₖ is a propositional axiom; or
@@ -186,7 +186,7 @@ inductive Ded : Set Proposition → Proposition → Prop
 
 notation : 45 Γ "⊢" φ => Ded Γ φ
 
--- A hypothesis is provable (trivial for our experiment definition)
+-- A hypothesis is provable (trivial under our experiment definition).
 -- Let T ⊆ Prop and P ∈ Prop. Prove that if P ∈ T, then T ⊢ P.
 -- A hypothesis of the context is immediately provable (the `assm` constructor).
 theorem provable_of_mem {Γ : Set Proposition} {P : Proposition} (h : P ∈ Γ) : Γ ⊢ P :=

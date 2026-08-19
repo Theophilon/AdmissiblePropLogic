@@ -229,7 +229,7 @@ lemma bound_pos (P : Proposition) (h : UsedVars P ≠ ∅) : 0 < Classical.choos
   classical
   have hne : ∃ x : ℕ, x ∈ UsedVars P := by
     by_contra h0
-    -- no variable occurs in `P`, so `UsedVars P` is empty, contradicting `h`.
+    -- No variable occurs in `P`, so `UsedVars P` is empty, contradicting `h`.
     apply h
     apply Set.ext
     intro x

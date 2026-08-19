@@ -126,13 +126,22 @@ theorem singleton_not_complete : ¬ Complete ({var 0} : Set Proposition) := by
 
 -- Henkin complete extension
 -- If T is consistent, then there exists a complete consistent set T′ such that T ⊆ T′.
--- sketch : can be done without zorn?
--- 1. construct the enumeration of Propositions
---    - consider the set Λn of propositions with size less or equal to n and no proposition variable occurs except P0,...,Pn
---    - use cardinality to give function f_n
---    - let Q0 = ⊤, figure out l for Qk = fn(l)
--- 2. construct a chain Tn containing T with Qn ∈ T(n+1) or ¬Qn ∈ T(n+1) using recursion based on trivial consistency by cases of union
--- 3. The union of the chain will be the complete set we want
+-- The classic construction proceeds in three steps, and it gets by without Zorn:
+-- a countable ladder of finite layers turns out to be all the choice that is needed.
+--  1. **Enumerate the propositions in finite layers.**  Let Λₙ be the set of
+--     propositions of size at most n whose variables come only from P₀,...,Pₙ.
+--     Each layer is finite — a cardinality bound — so the layers give a surjection
+--     ℕ → Proposition; that surjection is `enumProp`, which reads `Qₖ = enumProp k`.
+--     The chain is seeded with `Q₀ = ⊤`, so the enumeration starts somewhere
+--     polite and keeps going.
+--  2. **Build an increasing chain of consistent theories.**  Start with `T₀ = T`;
+--     at each step, extend `Tₙ` so that `Qₙ ∈ Tₙ₊₁` or `¬Qₙ ∈ Tₙ₊₁`: add `Qₙ`
+--     if that keeps the theory consistent, and otherwise add `¬ Qₙ`.  Recursion
+--     supplies the chain, and each step's consistency is checked case-by-case from
+--     the consistency of the previous union; no heavy machinery is consulted.
+--  3. **Take the union of the chain.**  The union is complete, since every `Qₙ`
+--     (or its negation) is decided by stage `n+1`, and it is consistent, since any
+--     contradiction drawn from the union would already appear on some finite level.
 
 -- The finite-layer enumeration of the sketch.  The n-th layer is the set of
 -- propositions of size at most `n` whose variables all lie among `P₀,...,P_n`;
@@ -245,7 +254,7 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
           | top => simp [Arity.arity] at ha
           | bot => simp [Arity.arity] at ha
           | neg =>
-              -- P = app .neg ha args = neg Q for the single sub-word Q.
+              -- P = app .neg ha args, that is, neg Q, where Q is the single sub-word.
               let Q : Proposition := args ⟨0, by decide⟩
               have hfeq : args = (fun _ : Fin (Arity.arity LogicalSymbol.neg) => Q) := by
                 funext i
@@ -278,7 +287,7 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
                 exact himg
               rw [hPeq]; exact hen
           | conj =>
-              -- P = app .conj ha args = conj Q₁ Q₂ for the two coordinates.
+              -- P = app .conj ha args, that is, conj Q₁ Q₂, where Q₁ and Q₂ are the two co-ordinates.
               let Q₁ : Proposition := args ⟨0, by decide⟩
               let Q₂ : Proposition := args ⟨1, by decide⟩
               have hfeq : args = (fun i : Fin (Arity.arity LogicalSymbol.conj) => if i.val = 0 then Q₁ else Q₂) := by
@@ -487,7 +496,7 @@ noncomputable instance instCountable : Countable Proposition :=
 -- ----------------------------------------------------------------------------
 --
 -- With `Countable Proposition` in hand we enumerate
--- every proposition `Q\2080, Q\2081, ...`, build a chain `T\2080=T ⊆ T\2081 ⊆ ...` where
+-- every proposition `Q₀, Q₁, ...`, build a chain `T₀=T ⊆ T₁ ⊆ ...` where
 -- `T_{n+1}` is `Tₙ` plus either `Qₙ` or `¬Qₙ` (whichever keeps the theory
 -- consistent), and take the union.  This is the part of the proof that reads like
 -- crossing a checkpoint: one decision per proposition, no appeal, and only
@@ -513,7 +522,7 @@ noncomputable def henkinStep (Tn : Set Proposition) (Q : Proposition) : Set Prop
   classical
   exact if Tn ⊢ Q then Tn ∪ ({Q} : Set Proposition) else Tn ∪ ({neg Q} : Set Proposition)
 
--- The chain: `T\2080 = T`, `T_{n+1} = henkinStep (Tₙ) (Qₙ)`.
+-- The chain: `T₀ = T`, `T_{n+1} = henkinStep (Tₙ) (Qₙ)`.
 noncomputable def henkinChain (T : Set Proposition) : ℕ → Set Proposition
   | 0 => T
   | n + 1 => henkinStep (henkinChain T n) (henkinEnum n)

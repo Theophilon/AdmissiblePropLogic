@@ -105,8 +105,8 @@ def Contradiction (P : Proposition) : Prop := ∀ t : TruthAssignment, eval t P 
 -- Equivalence: P ↔ Q is a tautology (i.e. t(P)=t(Q) for all t).
 def Equivalent (P Q : Proposition) : Prop := ∀ t : TruthAssignment, eval t P = eval t Q
 
--- Bool identities used to close the truth-functional goals below. The worst is
--- behind you once the goal has come down to a finite table.
+-- Bool identities used to close the truth-functional goals below. By the time a
+-- goal has been reduced to a finite table of truth values, the hard part is over.
 lemma bool_or_not (b : Bool) : ((!b) || b) = true := by cases b <;> decide
 lemma bool_and_not (b : Bool) : (b && (!b)) = false := by cases b <;> decide
 lemma bool_and_comm (a b : Bool) : (a && b) = (b && a) := by cases a <;> cases b <;> decide
