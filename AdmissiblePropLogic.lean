@@ -1,0 +1,10 @@
+import AdmissiblePropLogic.AdmissibleWord
+import AdmissiblePropLogic.Proposition
+import AdmissiblePropLogic.Semantics
+import AdmissiblePropLogic.ProofSystem
+import AdmissiblePropLogic.Soundness
+import AdmissiblePropLogic.Completeness
+import AdmissiblePropLogic.Compactness
+import AdmissiblePropLogic.NormalForms
+
+set_option linter.style.whitespace false

@@ -1,0 +1,45 @@
+name: Lean Action CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read # Read access to repository contents
+  pages: write # Write access to GitHub Pages
+  id-token: write # Write access to ID tokens
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # We need to fetch the gh-pages branch later, so fetch all
+          fetch-depth: 0
+
+      - uses: leanprover/lean-action@v1
+      - uses: leanprover-community/docgen-action@v1
+
+      # Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "github-actions@github.com"
+          # Checkout the gh-pages branch, or create it if it doesn't exist
+          git show-branch gh-pages || git checkout --orphan gh-pages
+          # Remove everything currently in the branch
+          git rm -rf .
+          # Copy the generated doc folder to the root
+          if [ -d doc ] && [ "$(ls -A doc)" ]; then
+            cp -r doc/* .
+            git add .
+            git commit -m "Deploy to GitHub Pages"
+            git push origin gh-pages
+          else
+            echo "No documentation to deploy."
+          fi
