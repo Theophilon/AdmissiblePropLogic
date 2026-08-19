@@ -12,10 +12,11 @@ namespace PropositionalLogic
 
 open Admissibility
 
+
 -- ============================================================================
 -- ## Completeness
--- ============================================================================
 
+-- ============================================================================
 --
 -- This is the completeness section.  A language model wrote it; Lean, which is
 -- not a member of the intended audience, has now verified every line of it.  The
@@ -26,38 +27,38 @@ open Admissibility
 -- of Completeness through the truth-lemma machinery at the end of this file,
 -- which also closes out the entailment-implies-provability half, a
 -- compactness-style result, and `Complete Var`.  The whole completeness section
--- is proved; the proof assistant was not consulted on how it felt about that.
 
+-- is proved; the proof assistant was not consulted on how it felt about that.
 -- Definition — complete theory
 -- Let T ⊆ Prop. We say that T is **complete** if for every P ∈ Prop, T ⊢ P or T ⊢ ¬ P.
 -- A theory is **complete** when it decides every proposition: either the
 -- proposition or its negation is provable from it.  Unfolding `Ded` and `neg`,
 -- this is a pointwise disjunction of provability, which Lean parses as a plain
--- `∀ P, (T ⊢ P) ∨ (T ⊢ neg P)` and does not find dramatic.
 def Complete (T : Set Proposition) : Prop :=
   ∀ P : Proposition, (T ⊢ P) ∨ (T ⊢ neg P)
 
+-- `∀ P, (T ⊢ P) ∨ (T ⊢ neg P)` and does not find dramatic.
 -- Inconsistent ⇒ complete
 -- Prove that if T is inconsistent, then T is complete.
 -- An inconsistent theory proves `bot`; the ex-falso axiom scheme `efq` gives
 -- `bot → P` for every `P`, and MP discharges it — so every proposition is
 -- provable, making the definition's disjunction trivially true on the left.
--- Ex falso, and from that point nothing on the left is false.
 theorem complete_of_inconsistent {T : Set Proposition} (h : Inconsistent T) : Complete T := by
   intro P
   left
   exact Ded.mp T bot P (Ded.efq T P) h
 
+-- Ex falso, and from that point nothing on the left is false.
 -- Which theories are (not) complete
 -- Prop and Var are complete; while ∅ and {P₀} are not complete.
 -- **`Prop` (the full theory `Set.univ`) is complete** — every
 -- proposition belongs to it, so `T ⊢ P` holds by the `assm` rule and the
--- disjunction is again trivially true on the left.
 theorem univ_complete : Complete (Set.univ : Set Proposition) := by
   intro P
   left
   exact Ded.assm (Set.univ : Set Proposition) P (by simp)
 
+-- disjunction is again trivially true on the left.
 -- **Not complete:** `∅` and `{P₀}` require a *non-provability* argument
 -- (`∅ ⊬ var 1`, `{P₀} ⊬ neg (var 1)`, …).  These follow from Soundness plus the
 -- fact that the relevant proposition is not a tautology / not entailed, closing via a
@@ -77,7 +78,6 @@ theorem univ_complete : Complete (Set.univ : Set Proposition) := by
 -- is refuted by the all-false assignment (where `var 0` is false), the latter by
 -- the all-true assignment (where `¬(var 0)` is false).  `not_ded_of_not_entails`
 -- (the contrapositive of Soundness, from `Soundness.lean`) turns those semantic
--- counter-assignments into non-provability.
 theorem empty_not_complete : ¬ Complete (∅ : Set Proposition) := by
   intro hc
   rcases hc (var 0) with hleft | hright
@@ -94,10 +94,10 @@ theorem empty_not_complete : ¬ Complete (∅ : Set Proposition) := by
       simp [eval_neg, eval_var] at ht
     exact (not_ded_of_not_entails hne) hright
 
+-- counter-assignments into non-provability.
 -- **`{P₀}` is NOT complete**: instantiate the definition at `var 1`.  The
 -- assignment `t n = (n = 0)` satisfies `{P₀}` (so `P₀` is true) but makes
 -- `var 1` false; the all-true assignment satisfies `{P₀}` but makes `¬(var 1)`
--- false.  Neither `{P₀} ⊢ var 1` nor `{P₀} ⊢ ¬(var 1)` is provable.
 theorem singleton_not_complete : ¬ Complete ({var 0} : Set Proposition) := by
   intro hc
   rcases hc (var 1) with hleft | hright
@@ -124,25 +124,28 @@ theorem singleton_not_complete : ¬ Complete ({var 0} : Set Proposition) := by
       simp [eval_neg, eval_var] at ht
     exact (not_ded_of_not_entails hne) hright
 
+-- false.  Neither `{P₀} ⊢ var 1` nor `{P₀} ⊢ ¬(var 1)` is provable.
 -- Henkin complete extension
 -- If T is consistent, then there exists a complete consistent set T′ such that T ⊆ T′.
--- sketch : can be done without zorn?
--- 1. construct the enumeration of Propositions
---    - consider the set Λn of propositions with size less or equal to n and no proposition variable occurs except P0,...,Pn
---    - use cardinality to give function f_n
---    - let Q0 = ⊤, figure out l for Qk = fn(l)
--- 2. construct a chain Tn containing T with Qn ∈ T(n+1) or ¬Qn ∈ T(n+1) using recursion based on trivial consistency by cases of union
--- 3. The union of the chain will be the complete set we want
+-- Sketch: one may ask whether this can be done without Zorn's lemma. The answer is yes, by a finite-layer enumeration.
+-- 1. Construct the enumeration of propositions.
+--    - For each n, let Λ_n be the set of propositions whose size is at most n and whose variables are among P_0, ..., P_n.
+--    - Use cardinality to obtain a function f_n that enumerates Λ_n.
+--    - Set Q_0 = ⊤ and, for each k ≥ 1, let Q_k = f_n(l) for an appropriate l.
+-- 2. Construct a chain T_n containing T such that at each step we add either Q_n or its negation, preserving consistency.
 
+--    - This is done by recursion: given T_n, if T_n ⊢ Q_n then set T_{n+1} = T_n ∪ {Q_n}; otherwise set T_{n+1} = T_n ∪ {¬Q_n}.
+--    - The consistency of each T_{n+1} follows from the fact that adding Q_n (or its negation) preserves consistency.
+-- 3. The union of the chain T = ⋃_n T_n is a complete consistent extension of T.
 -- The finite-layer enumeration of the sketch.  The n-th layer is the set of
 -- propositions of size at most `n` whose variables all lie among `P₀,...,P_n`;
 -- every proposition belongs to some layer (so the layers give a surjection
 -- `ℕ → Proposition`), and each layer is finite (its cardinality is bounded by
 -- `(n + c)^n`, c = number of nullary/connective symbols).  Finiteness and the
+
 -- surjection are realized concretely by `atoms`/`enum`/`every_prop_in_some_layer`
 -- below.  No separate layer type is needed; the type system was already doing
 -- enough bookkeeping.
-
 -- ----------------------------------------------------------------------------
 -- Countability of `Proposition`
 -- ----------------------------------------------------------------------------
@@ -167,21 +170,18 @@ theorem singleton_not_complete : ¬ Complete ({var 0} : Set Proposition) := by
 --     / `Nat.unpair`.
 --   • `instCountable` — `Countable Proposition` from that surjection via
 --     `Function.Surjective.countable`.
---
--- This is exactly the sketch's "cardinality argument"; Mathlib does NOT
--- auto-derive `Countable` for `AdmissibleWord LogicalSymbol`, so we build it.
 
--- Atomic propositions with variable index ≤ k, plus `top` and `bot`.
+--
 noncomputable def atoms (k : ℕ) : Finset Proposition :=
   (Finset.range (k + 1)).image var ∪ ({top, bot} : Finset Proposition)
 
--- Two `atom` witnesses differing only in the arity proof are the same word.
+-- This is exactly the sketch's "cardinality argument"; Mathlib does NOT
 lemma atom_eq {a : LogicalSymbol} {ha hb : Arity.arity a = 0} :
     (AdmissibleWord.atom a ha : Proposition) = AdmissibleWord.atom a hb := by
   apply congrArg (AdmissibleWord.atom a)
   exact Subsingleton.elim ha hb
 
--- `enum m k`: propositions of size ≤ m using only variables P₀..P_k.
+-- auto-derive `Countable` for `AdmissibleWord LogicalSymbol`, so we build it.
 noncomputable def enum : ℕ → ℕ → Finset Proposition
   | 0, _ => ∅
   | m + 1, k =>
@@ -190,11 +190,11 @@ noncomputable def enum : ℕ → ℕ → Finset Proposition
       ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => conj p.1 p.2) ∪
       ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => disj p.1 p.2)
 
+-- Atomic propositions with variable index ≤ k, plus `top` and `bot`.
+-- Two `atom` witnesses differing only in the arity proof are the same word.
+-- `enum m k`: propositions of size ≤ m using only variables P₀..P_k.
 -- The completeness direction: every proposition of size ≤ m with variables in
 -- P₀..P_k is produced by `enum m k`.  Induction on the size bound `m`; each
--- connective case pushes the sub-proposition(s) (strictly smaller, so ≤ m) into
--- `enum m k` via the IH, then reassembles under the matching `image`.  (After
--- `cases P` the name `P` is gone, so every step names the reconstructed word.)
 lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
     size P ≤ m → (∀ j : ℕ, j ∈ UsedVars P → j ≤ k) → P ∈ enum m k := by
   intro m
@@ -245,7 +245,7 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
           | top => simp [Arity.arity] at ha
           | bot => simp [Arity.arity] at ha
           | neg =>
-              -- P = app .neg ha args = neg Q for the single sub-word Q.
+-- connective case pushes the sub-proposition(s) (strictly smaller, so ≤ m) into
               let Q : Proposition := args ⟨0, by decide⟩
               have hfeq : args = (fun _ : Fin (Arity.arity LogicalSymbol.neg) => Q) := by
                 funext i
@@ -278,7 +278,7 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
                 exact himg
               rw [hPeq]; exact hen
           | conj =>
-              -- P = app .conj ha args = conj Q₁ Q₂ for the two coordinates.
+-- `enum m k` via the IH, then reassembles under the matching `image`.  (After
               let Q₁ : Proposition := args ⟨0, by decide⟩
               let Q₂ : Proposition := args ⟨1, by decide⟩
               have hfeq : args = (fun i : Fin (Arity.arity LogicalSymbol.conj) => if i.val = 0 then Q₁ else Q₂) := by
@@ -385,8 +385,8 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
                 exact himg
               rw [hPeq]; exact hen
 
--- Largest variable index occurring in a proposition (0 for constants / none).
--- Recurses exactly like `UsedVars`, so it bounds `UsedVars P` from above.
+-- `cases P` the name `P` is gone, so every step names the reconstructed word.)
+-- P = app .neg ha args = neg Q for the single sub-word Q.
 def maxVar : Proposition → ℕ
   | .atom (.var n) _ => n
   | .atom _ _ => 0
@@ -395,9 +395,9 @@ def maxVar : Proposition → ℕ
   | .app .disj _ args => max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
   | .app _ _ _ => 0
 
--- Every used variable of `P` is at most `maxVar P` — the finiteness/boundedness
--- of `UsedVars P` the surjection needs.  Structural induction mirroring
--- `UsedVars`/`eval_agrees_on_vars`.
+-- P = app .conj ha args = conj Q₁ Q₂ for the two coordinates.
+-- Largest variable index occurring in a proposition (0 for constants / none).
+-- Recurses exactly like `UsedVars`, so it bounds `UsedVars P` from above.
 theorem maxVar_bound : ∀ (P : Proposition) (j : ℕ), j ∈ UsedVars P → j ≤ maxVar P := by
   intro P
   induction P with
@@ -441,15 +441,15 @@ theorem maxVar_bound : ∀ (P : Proposition) (j : ℕ), j ∈ UsedVars P → j �
             change j ≤ max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
             exact le_trans h (le_max_right _ _)
 
--- Every proposition belongs to some finite layer `enum n n`.
+-- Every used variable of `P` is at most `maxVar P` — the finiteness/boundedness
 theorem every_prop_in_some_layer (P : Proposition) : ∃ n : ℕ, P ∈ enum n n := by
   refine ⟨max (size P) (maxVar P), ?_⟩
   exact enum_coverage _ _ P (le_max_left _ _) (by
     intro j hj
     exact le_trans (maxVar_bound P j hj) (le_max_right _ _))
 
--- The surjection `ℕ → Proposition`: at index `n`, decode `n = (m, i)` via the
--- Cantor-style pairing and pick the `i`-th element of layer `m`.
+-- of `UsedVars P` the surjection needs.  Structural induction mirroring
+-- `UsedVars`/`eval_agrees_on_vars`.
 noncomputable def enumProp (n : ℕ) : Proposition :=
   let m := Nat.unpair n |>.1
   let i := Nat.unpair n |>.2
@@ -458,9 +458,9 @@ noncomputable def enumProp (n : ℕ) : Proposition :=
   else
     var 0
 
--- `enumProp` hits every proposition: given `P`, put it in layer
--- `m = max (size P) (maxVar P)`, recover its position `i` in that layer's list,
--- and re-encode `(m, i)` with `Nat.pair`.
+-- Every proposition belongs to some finite layer `enum n n`.
+-- The surjection `ℕ → Proposition`: at index `n`, decode `n = (m, i)` via the
+-- Cantor-style pairing and pick the `i`-th element of layer `m`.
 theorem enumProp_surj : Function.Surjective enumProp := by
   intro P
   rcases every_prop_in_some_layer P with ⟨m, hm⟩
@@ -476,12 +476,15 @@ theorem enumProp_surj : Function.Surjective enumProp := by
   change (enum m m).toList.get i = P
   exact hi_eq
 
--- Countability: `Prop` is countable because it is the surjective image of `ℕ` —
--- an infinite object that still fits in a single index set, which is as
--- convenient as infiniteness ever gets here.
+-- `enumProp` hits every proposition: given `P`, put it in layer
+-- `m = max (size P) (maxVar P)`, recover its position `i` in that layer's list,
+-- and re-encode `(m, i)` with `Nat.pair`.
 noncomputable instance instCountable : Countable Proposition :=
   Function.Surjective.countable enumProp_surj
 
+-- Countability: `Prop` is countable because it is the surjective image of `ℕ` —
+-- an infinite object that still fits in a single index set, which is as
+-- convenient as infiniteness ever gets here.
 -- ----------------------------------------------------------------------------
 -- Henkin complete extension
 -- ----------------------------------------------------------------------------
@@ -499,26 +502,23 @@ noncomputable instance instCountable : Countable Proposition :=
 --     would be inconsistent exactly when `Tₙ ⊢ Qₙ`.
 --
 -- The union is consistent (`henkinUnion_consistent`, via the finite-subproof
--- argument: a proof of `bot` from the union uses finitely many hypotheses, all of
--- which live below some single `T_N`) and complete (`henkinUnion_complete`, each
--- `Qₙ` or `¬Qₙ` is decided by stage `n+1`).
 
--- The enumeration: reuse the surjection built in the Countable section above.
+-- argument: a proof of `bot` from the union uses finitely many hypotheses, all of
 noncomputable def henkinEnum : ℕ → Proposition := enumProp
 
--- The Henkin step at one proposition `Q`: extend `Tn` by `Q` if `Tn ⊢ Q`
--- (consistent by a provability-consistency lemma), otherwise by `¬Q` (consistent via the
--- contrapositive of the negation lemma).
+-- which live below some single `T_N`) and complete (`henkinUnion_complete`, each
+-- `Qₙ` or `¬Qₙ` is decided by stage `n+1`).
+-- The enumeration: reuse the surjection built in the Countable section above.
 noncomputable def henkinStep (Tn : Set Proposition) (Q : Proposition) : Set Proposition := by
   classical
   exact if Tn ⊢ Q then Tn ∪ ({Q} : Set Proposition) else Tn ∪ ({neg Q} : Set Proposition)
 
--- The chain: `T\2080 = T`, `T_{n+1} = henkinStep (Tₙ) (Qₙ)`.
+-- The Henkin step at one proposition `Q`: extend `Tn` by `Q` if `Tn ⊢ Q`
 noncomputable def henkinChain (T : Set Proposition) : ℕ → Set Proposition
   | 0 => T
   | n + 1 => henkinStep (henkinChain T n) (henkinEnum n)
 
--- Each Henkin step preserves consistency.
+-- (consistent by a provability-consistency lemma), otherwise by `¬Q` (consistent via the
 lemma henkinStep_consistent {Tn : Set Proposition} {Q : Proposition} (h : Consistent Tn) :
     Consistent (henkinStep Tn Q) := by
   classical
@@ -531,7 +531,7 @@ lemma henkinStep_consistent {Tn : Set Proposition} {Q : Proposition} (h : Consis
     have hq : Tn ⊢ Q := (provable_iff_inconsistent_neg).mpr hincon
     exact hQ hq
 
--- Consistency of every chain level, by induction along the chain.
+-- contrapositive of the negation lemma).
 lemma henkinChain_consistent {T : Set Proposition} (h : Consistent T) :
     ∀ n, Consistent (henkinChain T n) := by
   intro n
@@ -541,7 +541,7 @@ lemma henkinChain_consistent {T : Set Proposition} (h : Consistent T) :
       change Consistent (henkinStep (henkinChain T n) (henkinEnum n))
       exact henkinStep_consistent ih
 
--- The chain increases: `Tₙ ⊆ T_{n+1}` (both branches contain `Tₙ`).
+-- The chain: `T\2080 = T`, `T_{n+1} = henkinStep (Tₙ) (Qₙ)`.
 lemma henkinChain_mono {T : Set Proposition} (n : ℕ) :
     henkinChain T n ⊆ henkinChain T (n + 1) := by
   intro x hx
@@ -552,7 +552,7 @@ lemma henkinChain_mono {T : Set Proposition} (n : ℕ) :
   · simp [h, hx]
   · simp [h, hx]
 
--- Monotonicity over an offset: `Tᵢ ⊆ T_{i+k}`, by `k` applications of the step.
+-- Each Henkin step preserves consistency.
 lemma henkinChain_le_of_add {T : Set Proposition} (i : ℕ) (k : ℕ) :
     henkinChain T i ⊆ henkinChain T (i + k) := by
   induction k with
@@ -561,20 +561,20 @@ lemma henkinChain_le_of_add {T : Set Proposition} (i : ℕ) (k : ℕ) :
       intro x hx
       exact henkinChain_mono (i + k) (ih hx)
 
--- Monotonicity across several steps.
+-- Consistency of every chain level, by induction along the chain.
 lemma henkinChain_le {T : Set Proposition} {i j : ℕ} (hij : i ≤ j) :
     henkinChain T i ⊆ henkinChain T j := by
   have hk : j = i + (j - i) := by omega
   rw [hk]
   exact henkinChain_le_of_add (T := T) i (j - i)
 
--- The union of the whole chain.
+-- The chain increases: `Tₙ ⊆ T_{n+1}` (both branches contain `Tₙ`).
 def henkinUnion (T : Set Proposition) : Set Proposition :=
   {P | ∃ n : ℕ, P ∈ henkinChain T n}
 
--- A finite subset of the union is contained in a single chain level (take the
--- max of the finitely many levels providing its elements).  Compactness in
--- miniature: finitely many claims, each found finitely high up the chain.
+-- Monotonicity over an offset: `Tᵢ ⊆ T_{i+k}`, by `k` applications of the step.
+-- Monotonicity across several steps.
+-- The union of the whole chain.
 lemma finite_subset_bounded {T T₀ : Set Proposition} (hfin : T₀.Finite)
     (h : ∀ a ∈ T₀, ∃ n : ℕ, a ∈ henkinChain T n) :
     ∃ N : ℕ, T₀ ⊆ henkinChain T N := by
@@ -596,9 +596,9 @@ lemma finite_subset_bounded {T T₀ : Set Proposition} (hfin : T₀.Finite)
     · exact henkinChain_le (le_max_right N₀ n_a) hna
     · exact henkinChain_le (le_max_left N₀ n_a) (hN₀ hxs)
 
--- The union of a consistent chain is consistent: any proof of `bot` from the union
--- has a finite set of hypotheses, all below some `T_N`, contradicting that level's
--- consistency.
+-- A finite subset of the union is contained in a single chain level (take the
+-- max of the finitely many levels providing its elements).  Compactness in
+-- miniature: finitely many claims, each found finitely high up the chain.
 theorem henkinUnion_consistent {T : Set Proposition} (h : Consistent T) :
     Consistent (henkinUnion T) := by
   unfold Consistent
@@ -607,7 +607,7 @@ theorem henkinUnion_consistent {T : Set Proposition} (h : Consistent T) :
   rcases finite_subset_bounded hfin hsub with ⟨N, hN⟩
   exact (henkinChain_consistent h N) (weakening hN hincon₀)
 
--- Each `Qₙ` (or its negation) is decided by stage `n+1`.
+-- The union of a consistent chain is consistent: any proof of `bot` from the union
 lemma henkinChain_decides {T : Set Proposition} (n : ℕ) :
     henkinEnum n ∈ henkinChain T (n + 1) ∨ neg (henkinEnum n) ∈ henkinChain T (n + 1) := by
   change henkinEnum n ∈ henkinStep (henkinChain T n) (henkinEnum n) ∨
@@ -620,8 +620,8 @@ lemma henkinChain_decides {T : Set Proposition} (n : ℕ) :
   · right
     simp [h]
 
--- The union is complete: every proposition (reachable as some `Qₙ`, by
--- surjectivity of the enumeration) is either in the union or its negation is.
+-- has a finite set of hypotheses, all below some `T_N`, contradicting that level's
+-- consistency.
 lemma henkinUnion_complete {T : Set Proposition} : Complete (henkinUnion T) := by
   intro P
   rcases enumProp_surj P with ⟨m, hm⟩
@@ -636,10 +636,10 @@ lemma henkinUnion_complete {T : Set Proposition} : Complete (henkinUnion T) := b
     have hded : henkinUnion T ⊢ neg (henkinEnum m) := Ded.assm (henkinUnion T) (neg (henkinEnum m)) hmem
     simpa [hm'] using hded
 
+-- Each `Qₙ` (or its negation) is decided by stage `n+1`.
+-- The union is complete: every proposition (reachable as some `Qₙ`, by
+-- surjectivity of the enumeration) is either in the union or its negation is.
 -- Henkin complete extension
--- Every consistent `T` extends to a complete consistent theory `T'.`
--- (A modest name for a result that does most of the work here; the lemma does
--- not mind.)
 theorem henkin_complete_extension {T : Set Proposition} (h : Consistent T) :
     ∃ T', T ⊆ T' ∧ Complete T' ∧ Consistent T' := by
   refine ⟨henkinUnion T, ?_, ?_, ?_⟩
@@ -649,6 +649,9 @@ theorem henkin_complete_extension {T : Set Proposition} (h : Consistent T) :
   · exact henkinUnion_consistent h
 
 
+-- Every consistent `T` extends to a complete consistent theory `T'.`
+-- (A modest name for a result that does most of the work here; the lemma does
+-- not mind.)
 -- ----------------------------------------------------------------------------
 -- Model existence (the truth-lemma engine)
 -- ----------------------------------------------------------------------------
@@ -689,23 +692,20 @@ theorem henkin_complete_extension {T : Set Proposition} (h : Consistent T) :
 --
 -- **Note on entailment ⇒ provability** (`T ⊨ P ⇒ T ⊢ P`): it follows from model
 -- existence by the contrapositive — if `T ⊬ P`, then `T ∪ {¬P}` is consistent
+
 -- (by a consistency lemma), so some assignment satisfies it, making `P` false and
 -- refuting `T ⊨ P`.  Non-provability, it turns out, is always witnessed; the
 -- contrapositive makes sure of that.
-
 -- The model-existence truth assignment: `truthAssign Γ n = true` iff `Γ ⊢ var n`.
 -- This `t` decides variable `n` by provability (`t n = 1 iff T' ⊢ P_n`); noncomputable because
--- the `if` branches on provability, which needs a classical decidability witness.
--- A `def` that only exists in principle is still a `def`; Lean is a generous
--- employer.
 noncomputable def truthAssign (Γ : Set Proposition) : TruthAssignment := by
   classical
   exact fun n : ℕ => if Γ ⊢ var n then true else false
 
+-- the `if` branches on provability, which needs a classical decidability witness.
+-- A `def` that only exists in principle is still a `def`; Lean is a generous
+-- employer.
 -- Helper 1 (negation): for a complete consistent `Γ`, `neg P` is provable iff
--- `P` is not.  (→) since both `P` and `¬P` together would collapse to `bot`
--- (`inconsistent_of_both`); (←) by completeness, which decides `P` in `Γ`'s
--- favor only if `P` is actually provable.
 lemma complete_neg_iff {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consistent Γ)
     (P : Proposition) : (Γ ⊢ neg P) ↔ ¬ (Γ ⊢ P) := by
   constructor
@@ -716,9 +716,9 @@ lemma complete_neg_iff {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Cons
     · exact False.elim (hnotP hP)
     · exact hneg
 
--- Helper 2 (conjunction): `conj P Q` is provable iff both conjuncts are.  The (→)
--- direction projects with `conj_elim_left`/`right`; (←) assembles with
--- `conj_intro` (two `Ded.mp`s).
+-- `P` is not.  (→) since both `P` and `¬P` together would collapse to `bot`
+-- (`inconsistent_of_both`); (←) by completeness, which decides `P` in `Γ`'s
+-- favor only if `P` is actually provable.
 lemma conj_ded_iff {Γ : Set Proposition} {P Q : Proposition} :
     (Γ ⊢ conj P Q) ↔ ((Γ ⊢ P) ∧ (Γ ⊢ Q)) := by
   constructor
@@ -731,12 +731,12 @@ lemma conj_ded_iff {Γ : Set Proposition} {P Q : Proposition} :
     exact Ded.mp Γ Q (conj P Q)
       (Ded.mp Γ P (implication Q (conj P Q)) (Ded.conj_intro Γ P Q) hP) hQ
 
+-- Helper 2 (conjunction): `conj P Q` is provable iff both conjuncts are.  The (→)
+-- direction projects with `conj_elim_left`/`right`; (←) assembles with
+-- `conj_intro` (two `Ded.mp`s).
 -- Helper 3 (disjunction, → direction): from a provable `disj P Q` in a complete
 -- consistent `Γ`, one of `P`, `Q` is provable.  By contradiction: if neither
 -- were provable, completeness supplies `Γ⊢neg P` and `Γ⊢neg Q`; each gives an
--- implication to `bot` (`neg_imp`), and `disj_elim` on `disj P Q` reaches `bot`,
--- contradicting consistency.  (The genuinely semantic step in the truth lemma,
--- and where the model-existence theorem really happens.)
 lemma disj_ded_of_ded {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Complete Γ)
     {P Q : Proposition} (h : Γ ⊢ disj P Q) : (Γ ⊢ P) ∨ (Γ ⊢ Q) := by
   classical
@@ -763,7 +763,7 @@ lemma disj_ded_of_ded {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Com
           hQbot
       exact hcons (Ded.mp Γ (disj P Q) bot hstep h)
 
--- Helper 3': the full disjunction iff, bundling the two directions.
+-- implication to `bot` (`neg_imp`), and `disj_elim` on `disj P Q` reaches `bot`,
 lemma disj_ded_iff {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Complete Γ)
     {P Q : Proposition} : (Γ ⊢ disj P Q) ↔ ((Γ ⊢ P) ∨ (Γ ⊢ Q)) := by
   constructor
@@ -773,12 +773,12 @@ lemma disj_ded_iff {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Comple
     · exact Ded.mp Γ P (disj P Q) (Ded.disj_intro_left Γ P Q) hP
     · exact Ded.mp Γ Q (disj P Q) (Ded.disj_intro_right Γ P Q) hQ
 
+-- contradicting consistency.  (The genuinely semantic step in the truth lemma,
+-- and where the model-existence theorem really happens.)
+-- Helper 3': the full disjunction iff, bundling the two directions.
 -- The truth lemma: for a complete consistent `Γ`, the assignment read off from
 -- provability realizes every proposition exactly.  It is the centerpiece of the
 -- file and receives rather more ceremony than the induction strictly requires.
--- Structural induction on `P`; the `neg`/`conj`/`disj` app cases rebuild the
--- canonical connective word (`hPeq`) exactly as `enum_coverage` does, then
--- reduce `eval` via the `eval_*` rules and each connective's deduction iff.
 theorem truth_lemma {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consistent Γ)
     (P : Proposition) : (eval (truthAssign Γ) P = true) ↔ Γ ⊢ P := by
   classical
@@ -896,14 +896,14 @@ theorem truth_lemma {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consist
           rw [ihQ₂]
           exact (disj_ded_iff hcons hcmp).symm
 
+-- Structural induction on `P`; the `neg`/`conj`/`disj` app cases rebuild the
+-- canonical connective word (`hPeq`) exactly as `enum_coverage` does, then
+-- reduce `eval` via the `eval_*` rules and each connective's deduction iff.
 -- Completeness Theorem
 -- (1) For any proposition P if T ⊨ P, then T ⊢ P.
 -- (2) If T is consistent, then T is satisfiable.
 -- The two halves logicians always wanted to be the same theorem, and here they
 -- are.  Model-existence half: extend `T` to a complete consistent theory `T'`
--- (Henkin lemma), evaluate at the assignment `truthAssign T'`, and use the truth
--- lemma to show that assignment satisfies `T` (via `T ⊆ T'`).  The
--- entailment-implies-provability half is the corollary `entailment_implies_deductible`.
 theorem model_existence {T : Set Proposition} (hcons : Consistent T) : Satisfiable T := by
   rcases henkin_complete_extension hcons with ⟨T', hsub, hcmp, hcons'⟩
   refine ⟨truthAssign T', ?_⟩
@@ -911,15 +911,15 @@ theorem model_existence {T : Set Proposition} (hcons : Consistent T) : Satisfiab
   have hP' : P ∈ T' := hsub hP
   exact (truth_lemma hcmp hcons' P).mpr (Ded.assm T' P hP')
 
+-- (Henkin lemma), evaluate at the assignment `truthAssign T'`, and use the truth
+-- lemma to show that assignment satisfies `T` (via `T ⊆ T'`).  The
+-- entailment-implies-provability half is the corollary `entailment_implies_deductible`.
 -- ----------------------------------------------------------------------------
 -- Entailment implies provability
 -- ----------------------------------------------------------------------------
 --
 -- Part (1) is the contrapositive corollary of part (2): if `T ⊬ P`, then
 -- `T ∪ {¬P}` is consistent (by `provable_iff_inconsistent_neg`), so model existence yields an
--- assignment satisfying it — which makes `¬P` true, hence `P` false — refuting
--- `T ⊨ P`.  Every missing derivation is still witnessed by a countermodel;
--- the contrapositive does the bookkeeping.
 theorem entailment_implies_deductible {T : Set Proposition} {P : Proposition}
     (h : Entails T P) : T ⊢ P := by
   classical
@@ -934,13 +934,16 @@ theorem entailment_implies_deductible {T : Set Proposition} {P : Proposition}
     exact hsat Q (Or.inl hQ)
   have htP : eval t P = true := h t hsatT
   have htneg : eval t (neg P) = true := hsat (neg P) (by simp)
-  -- eval t (neg P) = !(eval t P) = !true = false, contradicting htneg.
+-- assignment satisfying it — which makes `¬P` true, hence `P` false — refuting
   have hf : eval t (neg P) = false := by
     rw [eval_neg, htP]
     rfl
   rw [hf] at htneg
   simp at htneg
 
+-- `T ⊨ P`.  Every missing derivation is still witnessed by a countermodel;
+-- the contrapositive does the bookkeeping.
+-- eval t (neg P) = !(eval t P) = !true = false, contradicting htneg.
 -- ----------------------------------------------------------------------------
 -- A compactness-style result
 -- ----------------------------------------------------------------------------
@@ -955,18 +958,15 @@ theorem entailment_implies_deductible {T : Set Proposition} {P : Proposition}
 -- hypothesis says `N` is NOT satisfiable (an assignment satisfying `N` would make
 -- every member of `T` false).  By the contrapositive of model existence
 -- (`model_existence`), `N` is inconsistent; by finite-subproof compactness
+
 -- (`consistent_of_finite_consistent`) some finite `N₀ ⊆ N` proves `bot`.  Soundness then says
 -- `N₀` is unsatisfiable, so each assignment falsifies some `neg Q ∈ N₀`, hence
 -- satisfies the corresponding `Q`; those `Q`'s form the finite `T₀`.
-
--- Choice of a member `Q ∈ T` witnessing `neg Q = P` (defaults to `top` when no
--- witness exists).  `noncomputable` because the `if`/`Classical.choose` branch on
--- an existential, which needs a classical `Decidable` instance.
 noncomputable def negPreimageQ (T : Set Proposition) (P : Proposition) : Proposition := by
   classical
   exact if h : ∃ Q : Proposition, Q ∈ T ∧ neg Q = P then Classical.choose h else top
 
--- The chosen member is indeed in `T`, and its negation is exactly `P`.
+-- Choice of a member `Q ∈ T` witnessing `neg Q = P` (defaults to `top` when no
 lemma negPreimage_spec {T : Set Proposition} {P : Proposition}
     (hN : ∃ Q : Proposition, Q ∈ T ∧ neg Q = P) :
     negPreimageQ T P ∈ T ∧ neg (negPreimageQ T P) = P := by
@@ -976,27 +976,27 @@ lemma negPreimage_spec {T : Set Proposition} {P : Proposition}
   rw [hred]
   exact Classical.choose_spec hN
 
+-- witness exists).  `noncomputable` because the `if`/`Classical.choose` branch on
+-- an existential, which needs a classical `Decidable` instance.
+-- The chosen member is indeed in `T`, and its negation is exactly `P`.
 -- Bool helpers used below, stated with the named function `Bool.not` so we never
--- write the `!`-notation inside a goal (it binds looser than `=`, which would
--- change the parse of `!b = true`).
--- `¬(b = true)` forces `b = false` (Bool is two-valued).
 lemma bool_ne_true_to_false (b : Bool) (h : ¬(b = true)) : b = false := by
   cases b <;> simp at h ⊢
--- `Bool.not b = false` iff `b = true`.
+-- write the `!`-notation inside a goal (it binds looser than `=`, which would
 lemma bool_not_eq_false (b : Bool) : (Bool.not b = false) ↔ b = true := by
   cases b <;> simp
 
--- The conclusion is expressed with a finite subset `T₀ ⊆ T`
--- whose members are "covered by truth" at every assignment (i.e. their big
--- disjunction is a tautology).
+-- change the parse of `!b = true`).
+-- `¬(b = true)` forces `b = false` (Bool is two-valued).
+-- `Bool.not b = false` iff `b = true`.
 theorem finite_subset_pointwise_true {T : Set Proposition}
     (h : ∀ t : TruthAssignment, ∃ Q, Q ∈ T ∧ eval t Q = true) :
     ∃ T₀ : Set Proposition, T₀.Finite ∧ T₀ ⊆ T ∧
       (∀ t : TruthAssignment, ∃ Q, Q ∈ T₀ ∧ eval t Q = true) := by
   classical
-  -- N = { neg Q | Q ∈ T }: the theory of negated members.
+-- The conclusion is expressed with a finite subset `T₀ ⊆ T`
   let N : Set Proposition := {P | ∃ Q, Q ∈ T ∧ neg Q = P}
-  -- N is not satisfiable: an assignment satisfying N makes every member of T false.
+-- whose members are "covered by truth" at every assignment (i.e. their big
   have hN : ¬ Satisfiable N := by
     intro hs
     rcases hs with ⟨t, hsat⟩
@@ -1008,13 +1008,13 @@ theorem finite_subset_pointwise_true {T : Set Proposition}
       rfl
     rw [hf] at htneg
     simp at htneg
-  -- Contrapositive of model existence: N is inconsistent.
+-- disjunction is a tautology).
   have hinc : Inconsistent N := by
     by_contra hnot
     exact hN (model_existence hnot)
-  -- Finite inconsistent subtheory (compactness of the derivation relation).
+-- N = { neg Q | Q ∈ T }: the theory of negated members.
   rcases consistent_of_finite_consistent hinc with ⟨N₀, hN₀fin, hN₀sub, hN₀inc⟩
-  -- T₀ = the chosen members witnessing each element of N₀.
+-- N is not satisfiable: an assignment satisfying N makes every member of T false.
   let T₀ : Set Proposition := (fun P => negPreimageQ T P) '' N₀
   refine ⟨T₀, ?_, ?_, ?_⟩
   · -- T₀ is finite (the image of the finite N₀).
@@ -1029,12 +1029,12 @@ theorem finite_subset_pointwise_true {T : Set Proposition}
     exact hspec.1
   · -- Every assignment is "covered" by T₀: it satisfies some member of T₀.
     intro t
-    -- N₀ ⊢ bot, so by soundness N₀ is unsatisfiable at t.
+-- Contrapositive of model existence: N is inconsistent.
     have hsat' : ¬ Satisfies t N₀ := by
       intro hs
       have hent : eval t bot = true := soundness hN₀inc t hs
       simp [eval_bot] at hent
-    -- Hence some member P ∈ N₀ is false under t.
+-- Finite inconsistent subtheory (compactness of the derivation relation).
     have hex : ∃ P, P ∈ N₀ ∧ eval t P = false := by
       by_contra hno
       apply hsat'
@@ -1062,6 +1062,16 @@ theorem finite_subset_pointwise_true {T : Set Proposition}
         exact (bool_not_eq_false (eval t Q)).mp hnb
       exact htQ
 
+-- T₀ = the chosen members witnessing each element of N₀.
+-- T₀ is finite (the image of the finite N₀).
+-- T₀ ⊆ T: each chosen witness is a member of T.
+-- Every assignment is "covered" by T₀: it satisfies some member of T₀.
+-- N₀ ⊢ bot, so by soundness N₀ is unsatisfiable at t.
+-- Hence some member P ∈ N₀ is false under t.
+-- Q ∈ T₀ (P is the preimage of Q under the choice function).
+-- eval t Q = true: P = neg Q is false, so Q is true.
+def Var : Set Proposition := {P | ∃ n : ℕ, P = var n}
+
 -- ----------------------------------------------------------------------------
 -- Example — `Var` is complete
 -- ----------------------------------------------------------------------------
@@ -1070,16 +1080,6 @@ theorem finite_subset_pointwise_true {T : Set Proposition}
 -- the all-true assignment `t ≡ true`, so by the Completeness Theorem (part (1))
 -- every `P` or `¬P` is provable from `Var`, i.e. `Complete Var`.  A model with
 -- one assignment leaves little to the imagination, which is the point.
-def Var : Set Proposition := {P | ∃ n : ℕ, P = var n}
-
--- `Var` is complete.  The only assignment satisfying
--- `Var` is the all-true one, `t ≡ true`; under it every proposition evaluates to a
--- Bool value `P (true, true, …)`, which is either `true` or `false`.  The
--- two halves of completeness fall out by evaluating under that single assignment
--- and using decidability — whichever way `P` evaluates, either it or its
--- negation holds in the model, and completeness (entailment ⇒ provability)
--- transfers that back to a derivation.  The theorem is effectively polarizing
--- every proposition against a single fixed endpoint.
 theorem complete_var : Complete Var := by
   classical
   intro P

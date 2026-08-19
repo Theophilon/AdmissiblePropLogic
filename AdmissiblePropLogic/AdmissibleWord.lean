@@ -13,27 +13,28 @@ namespace Admissibility
 
 universe u
 
+
 -- ============================================================================
 -- ## Admissible words
--- ============================================================================
 
+-- ============================================================================
 -- ----------------------------------------------------------------------------
 -- The arity function
--- ----------------------------------------------------------------------------
 
+-- ----------------------------------------------------------------------------
 -- The **arity function** on an alphabet `A`: each letter is assigned the number
 -- of direct sub-words it governs.  A letter of arity `0` is a constant (it
 -- stands alone as an atom); a letter of positive arity expects that many
 -- sub-words.  This is the datum that lets well-formedness be checked by counting,
 -- and the typeclass bundles it so `AdmissibleWord A` can carry `[Arity A]`.
--- The count was decided by a machine; Lean merely agrees not to complain.
 class Arity (A : Type u) where
   arity : A → ℕ
 
+-- The arity function is defined as described; Lean confirms its properties.
 -- ----------------------------------------------------------------------------
 -- The `AdmissibleWord` type
--- ----------------------------------------------------------------------------
 
+-- ----------------------------------------------------------------------------
 -- The core type of the project: a word over `A` that is **well-formed by
 -- construction** against the arity structure.  There is no separate
 -- admissibility predicate to thread through — every value of this type is,
@@ -45,11 +46,11 @@ class Arity (A : Type u) where
 --     applied to exactly `arity a` sub-words.
 -- The `Fin (arity a) → AdmissibleWord A` argument is what makes the whole
 -- recursion structural (and hence totality of `size`/`eval` free).  The idea is
--- the admissible-word definition, read as a tree rather than as a flat string.
 inductive AdmissibleWord (A : Type u) [Arity A] : Type u where
   | atom : (a : A) → (ha : Arity.arity a = 0) → AdmissibleWord A
   | app  : (a : A) → (ha : Arity.arity a > 0) → (args : Fin (Arity.arity a) → AdmissibleWord A) → AdmissibleWord A
 
+-- the admissible-word definition, read as a tree rather than as a flat string.
 -- Decidable equality for well-formed words.  `deriving DecidableEq` cannot handle
 -- the `Fin (Arity.arity a) → AdmissibleWord A` field automatically, so we supply
 -- the instance ourselves and let the standard `instDecidableEqPi` (finite domain
@@ -57,7 +58,6 @@ inductive AdmissibleWord (A : Type u) [Arity A] : Type u where
 -- iff their head symbols agree and their argument functions are extensionally
 -- equal (checkable because `Fin n` is finite).  `injection` recovers the field
 -- equalities from a word equation. Hand-written, and checked by a part of the
--- stack that does not know the difference.
 noncomputable instance (A : Type u) [Arity A] [DecidableEq A] : DecidableEq (AdmissibleWord A) := fun x y =>
   match x, y with
   | .atom a₁ _, .atom a₂ _ => by
@@ -75,29 +75,29 @@ noncomputable instance (A : Type u) [Arity A] [DecidableEq A] : DecidableEq (Adm
       · exact isFalse (by intro hx; apply h; injection hx)
 
 
+-- stack that does not know the difference.
 -- ----------------------------------------------------------------------------
 -- Size and sub-words
--- ----------------------------------------------------------------------------
 
+-- ----------------------------------------------------------------------------
 -- The **size** (number of letters) of a word: `1` for an atom, and for an
 -- application `1 +` the sizes of its `arity`-many sub-words.  Because
 -- `AdmissibleWord` is structural, this is a plain recursion — no length- or
 -- count-based strong induction is needed anywhere in the project. Structural
--- recursion saves the day, as it has been doing all along and will keep doing.
 def size {A : Type u} [Arity A]: AdmissibleWord A → Nat
   | .atom _ _ => 1
   | .app _ _ args => 1 + (List.ofFn (fun i => size (args i))).sum
 
 variable {A : Type u} [Arity A]
 
+-- recursion saves the day, as it has been doing all along and will keep doing.
 -- Every word has positive size: a word has at least one letter.  No
--- `AdmissibleWord` is empty, so its size is never `0`.
 theorem size_pos (P : AdmissibleWord A) : 0 < size P := by
   cases P <;> simp [size]; omega
 
+-- `AdmissibleWord` is empty, so its size is never `0`.
 -- Helper: a natural number occurring in a list is no larger than the list's
 -- sum.  Used by `size_arg_lt` to bound each sub-word size by the total size.
--- A small lemma whose entire purpose in life is to hold the door for the next.
 lemma nat_le_sum_of_mem (x : Nat) (l : List Nat) (h : x ∈ l) : x ≤ l.sum := by
   induction l with
   | nil => cases h
@@ -111,15 +111,15 @@ lemma nat_le_sum_of_mem (x : Nat) (l : List Nat) (h : x ∈ l) : x ≤ l.sum := 
       apply Nat.le_trans (ih h_tail)
       exact Nat.le_add_left ys.sum y
 
+-- A small lemma whose entire purpose in life is to hold the door for the next.
+-- x = y, so x ≤ y + ys.sum
+-- x ∈ ys, use induction hypothesis
 -- Each sub-word of an application is strictly smaller than the whole word.
--- This is the well-foundedness of the sub-word relation, and it is what
--- makes the recursion structural for induction. Everything in Lean is a tree;
--- the trees just insist on it more than most didactic genres do.
 lemma size_arg_lt (a : A) (ha : Arity.arity a > 0) (args : Fin (Arity.arity a) → AdmissibleWord A)
     (i : Fin (Arity.arity a)) :
     size (args i) < size (.app a ha args) := by
   simp only [size]
-  -- goal: size (args i) < 1 + sum
+-- This is the well-foundedness of the sub-word relation, and it is what
   rw [Nat.add_comm]   -- now goal: size (args i) < sum + 1
   have hmem : size (args i) ∈ List.ofFn (fun j => size (args j)) := by
     simp [List.mem_ofFn]
@@ -127,33 +127,33 @@ lemma size_arg_lt (a : A) (ha : Arity.arity a > 0) (args : Fin (Arity.arity a) �
     nat_le_sum_of_mem _ _ hmem
   exact Nat.lt_succ_of_le h_le   -- works because sum + 1 = sum.succ
 
--- Every (nonempty) word contains a nullary letter somewhere.  For an atom the
--- letter is itself; for an application, ha : arity a > 0 guarantees at least one
--- argument, and the induction hypothesis applies to it. Somewhere, an atom is
--- hiding; the recursion finds it with no sense of drama.
+-- makes the recursion structural for induction. Everything in Lean is a tree;
+-- the trees just insist on it more than most didactic genres do.
+-- goal: size (args i) < 1 + sum
+-- now goal: size (args i) < sum + 1
 theorem exists_nullary (f : AdmissibleWord A) : ∃ a : A, Arity.arity a = 0 := by
   induction f with
   | atom a ha => exact ⟨a, ha⟩
   | app a ha args ih =>
-    -- ha : arity a > 0, so there is at least one argument.
+-- works because sum + 1 = sum.succ
     have hpos : 0 < Arity.arity a := ha
     exact ih ⟨0, hpos⟩  -- induction hypothesis applies to any argument
 
+-- Every (nonempty) word contains a nullary letter somewhere.  For an atom the
+-- letter is itself; for an application, ha : arity a > 0 guarantees at least one
+-- argument, and the induction hypothesis applies to it. Somewhere, an atom is
+
+-- hiding; the recursion finds it with no sense of drama.
+-- ha : arity a > 0, so there is at least one argument.
+-- induction hypothesis applies to any argument
 -- ----------------------------------------------------------------------------
+def Path := List Nat
+
 -- Paths and unique readability
 -- ----------------------------------------------------------------------------
-
 -- Positions are paths: a finite list of child indices navigating the tree.
 -- A sub-word at a starting position `i`, generalized from a single step to a
 -- full path. Trees turn every question into a question about paths; the
--- patience required to follow them is the reader's own.
-def Path := List Nat
-
--- Look up the sub-word at a path: `some g` if the path is valid (every index
--- lies within the arity of the head letter on the way down), `none` otherwise.
--- An `AdmissibleWord` is a tree, so a path uniquely determines either a sub-word
--- or failure. No ambiguity is possible, which is precisely what keeps this an
--- `Option` routine rather than a small adventure.
 def getSubAdmissibleWord : AdmissibleWord A → Path → Option (AdmissibleWord A)
   | f, [] => some f
   | .atom _ _, _::_ => none
@@ -164,11 +164,11 @@ def getSubAdmissibleWord : AdmissibleWord A → Path → Option (AdmissibleWord 
       if h : i+1 < Arity.arity a then getSubAdmissibleWord (args ⟨i+1, h⟩) rest
       else none
 
--- Unique readability of sub-words: if a path returns a sub-word, it returns a
--- unique one.  A unique admissible word occurs at a given starting position,
--- stated for a full path instead of a single
--- position — the `Option` result already encodes existence, and `Injective` is
--- what remains of uniqueness once existence has consented to show up.
+-- patience required to follow them is the reader's own.
+-- Look up the sub-word at a path: `some g` if the path is valid (every index
+-- lies within the arity of the head letter on the way down), `none` otherwise.
+-- An `AdmissibleWord` is a tree, so a path uniquely determines either a sub-word
+-- or failure. No ambiguity is possible, which is precisely what keeps this an
 theorem unique_subword_at_path (f : AdmissibleWord A) (p : Path) :
     (getSubAdmissibleWord f p).isSome → ∃! g, getSubAdmissibleWord f p = some g := by
   intro h
