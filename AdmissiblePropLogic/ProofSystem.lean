@@ -11,16 +11,15 @@ set_option linter.style.longLine false
 
 namespace PropositionalLogic
 
-
 -- ============================================================================
 -- ## Formal proofs
-
 -- ============================================================================
+
 -- Definition — Propositional axiom
 -- ----------------------------------------------------------------------------
 -- The propositional axiom schemes
-
 -- ----------------------------------------------------------------------------
+
 -- A **propositional axiom** is a proposition that occurs in the list below, for some choice of P, Q and R;
 -- (1) ⊤;
 -- (2) P → (P ∨ Q); P → (Q ∨ P); P → (Q → P);
@@ -29,99 +28,100 @@ namespace PropositionalLogic
 -- (5) P → (Q → (P ∧ Q));
 -- (6) (P → (Q → R)) → ((P → Q) → (P → R));
 -- (7) P → (¬ P → ⊥);
-
 -- (8) (¬ P → ⊥) → P.
+
 -- The implication arrow → is NOT a new `LogicalSymbol`: it is the abbreviation
 -- `implication` already defined in Semantics as ¬ P ∨ Q. Every axiom
 -- scheme below is therefore stated over the real letters `neg`/`conj`/`disj` only.
 -- Reassuring, in a small way: the machine will not accept a connective smuggled in
-
 -- through a comment. It has to be declared honestly in the code before it may be used.
+
 -- Propositional axioms are tautologies
 -- Prove that all propositional axioms are tautologies.
 -- ----------------------------------------------------------------------------
 -- Axioms are tautologies
-
 -- ----------------------------------------------------------------------------
+
 -- All thirteen axiom schemes of the `Ded` system below are tautologies (soundness of
 -- the single axiom/rule presentation). Each is `Tautology`, i.e. true under every
 -- truth assignment: expand the abbreviation layers with the `eval_*` lemmas, then the
 -- goal is a closed truth-functional `Bool` identity closed by `decide`.
 -- `decide` does not care how the goal was phrased; it only checks it. A useful
-
 -- temperament, and one to keep in mind while reading on.
+
+-- (1) `top`
 theorem tautology_top_axiom : Tautology top := by
   intro t
   simp [eval_top]
--- (1) `top`
+-- (2a) P → (P ∨ Q)
 theorem tautology_disj_intro_left {P Q : Proposition} :
     Tautology (implication P (disj P Q)) := by
   intro t
   simp only [eval_implication, eval_disj]
   cases eval t P <;> cases eval t Q <;> decide
--- (2a) P → (P ∨ Q)
+-- (2b) P → (Q ∨ P)
 theorem tautology_disj_intro_right {P Q : Proposition} :
     Tautology (implication P (disj Q P)) := by
   intro t
   simp only [eval_implication, eval_disj]
   cases eval t P <;> cases eval t Q <;> decide
--- (2b) P → (Q ∨ P)
+-- (2c) P → (Q → P)
 theorem tautology_imp_1 {P Q : Proposition} :
     Tautology (implication P (implication Q P)) := by
   intro t
   simp only [eval_implication]
   cases eval t P <;> cases eval t Q <;> decide
--- (2c) P → (Q → P)
+-- (6) (P → (Q → R)) → ((P → Q) → (P → R))
 theorem tautology_imp_2 {P Q R : Proposition} :
     Tautology (implication (implication P (implication Q R))
                             (implication (implication P Q) (implication P R))) := by
   intro t
   simp only [eval_implication]
   cases eval t P <;> cases eval t Q <;> cases eval t R <;> decide
--- (6) (P → (Q → R)) → ((P → Q) → (P → R))
+-- contraposition scheme used by `Ded.neg_contra`: (¬ P → ¬ Q) → (Q → P)
 theorem tautology_neg_contra {P Q : Proposition} :
     Tautology (implication (implication (neg P) (neg Q)) (implication Q P)) := by
   intro t
   simp only [eval_implication, eval_neg]
   cases eval t P <;> cases eval t Q <;> decide
--- contraposition scheme used by `Ded.neg_contra`: (¬ P → ¬ Q) → (Q → P)
+-- ex-falso / efq scheme: ⊥ → P
 theorem tautology_efq {P : Proposition} : Tautology (implication bot P) := by
   intro t
   simp [eval_implication, eval_bot]
--- ex-falso / efq scheme: ⊥ → P
 -- (7) P → (¬ P → ⊥) — contradiction/explosion scheme: together,
+-- `P` and `¬P` force `bot`.
 theorem tautology_neg_elim {P : Proposition} :
     Tautology (implication P (implication (neg P) bot)) := by
   intro t
   simp only [eval_implication, eval_neg, eval_bot]
   cases eval t P <;> decide
--- `P` and `¬P` force `bot`.
 -- (8) (¬ P → ⊥) → P — reductio ad absurdum (RAA): if `¬P`
 -- entails `bot`, then `P` holds.  This is the classical axiom whose absence made
+-- the old `Ded` system not classically complete.
 theorem tautology_raa {P : Proposition} :
     Tautology (implication (implication (neg P) bot) P) := by
   intro t
   simp only [eval_implication, eval_neg, eval_bot]
   cases eval t P <;> decide
--- the old `Ded` system not classically complete.
+-- (4a) (P ∧ Q) → P
 theorem tautology_conj_elim_left {P Q : Proposition} :
     Tautology (implication (conj P Q) P) := by
   intro t
   simp only [eval_implication, eval_conj]
   cases eval t P <;> cases eval t Q <;> decide
--- (4a) (P ∧ Q) → P
+-- (4b) (P ∧ Q) → Q
 theorem tautology_conj_elim_right {P Q : Proposition} :
     Tautology (implication (conj P Q) Q) := by
   intro t
   simp only [eval_implication, eval_conj]
   cases eval t P <;> cases eval t Q <;> decide
--- (4b) (P ∧ Q) → Q
+-- (5) P → (Q → (P ∧ Q))
 theorem tautology_conj_intro {P Q : Proposition} :
     Tautology (implication P (implication Q (conj P Q))) := by
   intro t
   simp only [eval_implication, eval_conj]
   cases eval t P <;> cases eval t Q <;> decide
--- (5) P → (Q → (P ∧ Q))
+-- disjunction-elimination scheme: (P → R) → ((Q → R) → ((P ∨ Q) → R))
 theorem tautology_disj_elim {P Q R : Proposition} :
     Tautology (implication (implication P R)
               (implication (implication Q R) (implication (disj P Q) R))) := by
@@ -129,28 +129,27 @@ theorem tautology_disj_elim {P Q R : Proposition} :
   simp only [eval_implication, eval_disj]
   cases eval t P <;> cases eval t Q <;> cases eval t R <;> decide
 
--- disjunction-elimination scheme: (P → R) → ((Q → R) → ((P ∨ Q) → R))
 -- ----------------------------------------------------------------------------
 -- Modus Ponens and the Ded relation
-
 -- ----------------------------------------------------------------------------
+
 -- Definition — Modus Ponens
 -- **Modus Ponens (MP)** is the only rule of inference for propositional logic:
 -- 
-
 -- *From P and P → Q, infer Q.*
+
 -- Definition — Formal proof / provable (use the experiment one, this definition is clanky to work with)
 -- Let T ⊆ Prop and P ∈ Prop. A **formal proof** of P from T is a sequence Q₁, ..., Qₙ such that Qₙ = P and for every k ∈ {1, ..., n},
 -- (1) Qₖ ∈ T;
 -- (2) Qₖ is a propositional axiom; or
 -- (3) Qₖ can be inferred from Qᵢ and Qⱼ by MP for some Qᵢ, Qⱼ ∈ {Q₁, ..., Qₖ₋₁}.
 -- 
-
 -- We say that **T proves P** (or P is **provable** from T) and denoted by T ⊢ P if there exists a formal proof of P from T. If T doesn't prove P, we denote by T ⊬ P.
+
 -- ----------------------------------------------------------------------------
 -- The provability relation Ded
-
 -- ----------------------------------------------------------------------------
+
 -- Experiment encoding. Instead of a clunky sequence of
 -- propositions, provability is one inductive family indexed by (context, conclusion). Each
 -- axiom scheme is a constructor, and Modus Ponens
@@ -163,6 +162,7 @@ theorem tautology_disj_elim {P Q R : Proposition} :
 -- follows the provability relations in `guodk/PropLogicLean` (Lean4, completeness for
 -- propositional logic) and `m4lvin/lean4-pdl` (PDL in Lean4).
 -- Because a derivation *is* its inhabitant, there is no separate proof object where
+-- a mistake could sit quietly; and even so, Lean would have noticed it anyway.
 inductive Ded : Set Proposition → Proposition → Prop
   | assm         : ∀ Γ P, P ∈ Γ → Ded Γ P
   | imp_1        : ∀ Γ P Q, Ded Γ (implication P (implication Q P))
@@ -186,22 +186,22 @@ inductive Ded : Set Proposition → Proposition → Prop
 
 notation : 45 Γ "⊢" φ => Ded Γ φ
 
--- a mistake could sit quietly; and even so, Lean would have noticed it anyway.
 -- A hypothesis is provable (trivial for our experiment definition)
 -- Let T ⊆ Prop and P ∈ Prop. Prove that if P ∈ T, then T ⊢ P.
+-- A hypothesis of the context is immediately provable (the `assm` constructor).
 theorem provable_of_mem {Γ : Set Proposition} {P : Proposition} (h : P ∈ Γ) : Γ ⊢ P :=
   Ded.assm Γ P h
 
--- A hypothesis of the context is immediately provable (the `assm` constructor).
+-- Definition — Modus Ponens as a rule step of the inductive family.
 example {Γ : Set Proposition} {P Q : Proposition}
     (h1 : Γ ⊢ implication P Q) (h2 : Γ ⊢ P) : Γ ⊢ Q :=
   Ded.mp Γ P Q h1 h2
 
--- Definition — Modus Ponens as a rule step of the inductive family.
 -- Provable identity (done in the experiment)
 -- For every P ∈ Prop, we have ⊢ P → P.
 -- ⊢ P → P — Hilbert's identity, from the two implication
 -- axiom schemes (`imp₁`, `imp₂`) and MP.
+-- Hilbert's identity: the theorem one is taught to prove first, because one must.
 theorem imp_self (P : Proposition) : (∅ : Set Proposition) ⊢ implication P P := by
   have h1 : (∅ : Set Proposition) ⊢ implication P (implication (implication P P) P) :=
     Ded.imp_1 (∅ : Set Proposition) P (implication P P)
@@ -217,16 +217,16 @@ theorem imp_self (P : Proposition) : (∅ : Set Proposition) ⊢ implication P P
       (implication (implication P (implication P P)) (implication P P)) h3 h1
   exact Ded.mp (∅ : Set Proposition) (implication P (implication P P)) (implication P P) h4 h2
 
--- Hilbert's identity: the theorem one is taught to prove first, because one must.
 -- ----------------------------------------------------------------------------
 -- Monotonicity and finiteness
-
 -- ----------------------------------------------------------------------------
+
 -- Weakening / monotonicity — if Γ ⊆ Δ and Γ ⊢ P then Δ ⊢ P.
 -- A structural induction over every constructor of the `Ded` family: the `assm` case
 -- routes the hypothesis through the subset inclusion, and every other constructor is
 -- re-emitted at the larger context unchanged.
 -- If adding assumptions could break a proof, the logic would be badly designed,
+-- and Lean, given the chance to say so, usually does.
 theorem weakening {Γ Δ : Set Proposition} (hsub : Γ ⊆ Δ) {P : Proposition} :
     (Γ ⊢ P) → (Δ ⊢ P) := by
   intro h
@@ -247,7 +247,6 @@ theorem weakening {Γ Δ : Set Proposition} (hsub : Γ ⊆ Δ) {P : Proposition}
   | disj_elim P' Q' R' => exact Ded.disj_elim Δ P' Q' R'
   | mp P' Q' hf hp ihf ihp => exact Ded.mp Δ P' Q' ihf ihp
 
--- and Lean, given the chance to say so, usually does.
 -- Finite proofs (done in the experiment)
 -- Let T ⊆ Prop and P ∈ Prop. Prove that if T ⊢ P, then there exists a finite subset T₀ of T such that T₀ ⊢ P.
 -- Compactness of the derivation relation: every proof uses only finitely
@@ -255,6 +254,7 @@ theorem weakening {Γ Δ : Set Proposition} (hsub : Γ ⊆ Δ) {P : Proposition}
 -- set `{P}`, each axiom/rule step needs only `∅`, and MP takes the union
 -- of the two IHs' finite subsets, weakening each sub-derivation up to the union.
 -- Proofs are finite objects, so this is less a theorem about logic and more a
+-- reminder about what proofs are; the reminder is machine-checked.
 theorem finite_subproof {T : Set Proposition} {P : Proposition} (h : T ⊢ P) :
     ∃ T₀ : Set Proposition, T₀.Finite ∧ T₀ ⊆ T ∧ T₀ ⊢ P := by
   induction h with
@@ -341,7 +341,6 @@ theorem finite_subproof {T : Set Proposition} {P : Proposition} (h : T ⊢ P) :
           (weakening (fun x hx => Or.inl hx) hd1)
           (weakening (fun x hx => Or.inr hx) hd2)
 
--- reminder about what proofs are; the reminder is machine-checked.
 -- Deduction Lemma
 -- Let T ⊆ Prop and P, Q be propositions. If T ∪ {P} ⊢ Q, then T ⊢ P → Q.
 -- Proved by induction on the derivation of Q from T ∪ {P}.
@@ -353,23 +352,24 @@ theorem finite_subproof {T : Set Proposition} {P : Proposition} (h : T ⊢ P) :
 -- P → Q by the scheme `imp₁` ("if Q is provable then P → Q is provable").
 -- That lift is `imp_intro_of_provable` below.
 -- The proof is not clever; it enumerates every constructor and checks. Here we are
-
 -- content to match Lean's preference for thoroughness over wit.
+
+-- If an implication's consequent is provable, so is the whole implication (scheme `imp₁` + MP).
 lemma imp_intro_of_provable {T : Set Proposition} {P Q : Proposition}
     (h : T ⊢ Q) : T ⊢ implication P Q :=
       Ded.mp T Q (implication P Q) (Ded.imp_1 T Q P) h
 
--- If an implication's consequent is provable, so is the whole implication (scheme `imp₁` + MP).
 -- ----------------------------------------------------------------------------
 -- The Deduction Lemma
-
 -- ----------------------------------------------------------------------------
+
 -- The **Deduction Lemma**: if `Q` is provable from
 -- `T ∪ {P}`, then `P → Q` is provable from `T`.  The strategy is described in
 -- the comment above `imp_intro_of_provable`; the induction here just threads it
 -- through every constructor of the `Ded` family, with Modus Ponens handled by
 -- the `imp₂`-glued step below.
 -- The machinery is identical to `weakening`'s; what is new is what it says.
+-- Either way, Lean checks.
 theorem deduction {T : Set Proposition} {P Q : Proposition}
     (h : T ∪ ({P} : Set Proposition) ⊢ Q) : T ⊢ implication P Q := by
   induction h with
@@ -399,8 +399,8 @@ theorem deduction {T : Set Proposition} {P Q : Proposition}
                   (Ded.imp_2 T P A B) ihf)
         ihp
 
--- Either way, Lean checks.
 -- Hypothetical syllogism: if T ⊢ A → B and T ⊢ B → C then
+-- T ⊢ A → C. By the Deduction Lemma: assume A, chained MP gets C.
 lemma imp_trans {T : Set Proposition} {A B C : Proposition}
     (hAB : T ⊢ implication A B) (hBC : T ⊢ implication B C) :
     T ⊢ implication A C := by
@@ -413,16 +413,16 @@ lemma imp_trans {T : Set Proposition} {A B C : Proposition}
     weakening (fun x hx => Or.inl hx) hBC
   exact Ded.mp (T ∪ ({A} : Set Proposition)) B C hBC' hB
 
--- T ⊢ A → C. By the Deduction Lemma: assume A, chained MP gets C.
 -- Classical ex falso expressed with the material implication: from provable ¬ A
 -- (and A → B being ¬ A ∨ B) we get T ⊢ A → B.
+-- Uses `disj_intro_left` on the disjunctive spelling of the implication.
 lemma neg_imp {T : Set Proposition} {A B : Proposition} (h : T ⊢ neg A) :
     T ⊢ implication A B :=
   Ded.mp T (neg A) (implication A B) (Ded.disj_intro_left T (neg A) B) h
 
--- Uses `disj_intro_left` on the disjunctive spelling of the implication.
 -- Modus tollens: from T ⊢ A → X and T ⊢ ¬ X, derive T ⊢ ¬ A.
 -- disj_elim resolves the disjunctive A → X = ¬ A ∨ X against
+-- ¬ A (reflexive) and X → ¬ A (which `neg_imp` supplies from provable ¬ X).
 lemma modus_tollens {T : Set Proposition} {A X : Proposition}
     (hAX : T ⊢ implication A X) (hnegX : T ⊢ neg X) : T ⊢ neg A := by
   have hAXd : T ⊢ disj (neg A) X := by simpa [implication] using hAX
@@ -438,7 +438,6 @@ lemma modus_tollens {T : Set Proposition} {A X : Proposition}
       hXA
   exact Ded.mp T (disj (neg A) X) (neg A) hstep hAXd
 
--- ¬ A (reflexive) and X → ¬ A (which `neg_imp` supplies from provable ¬ X).
 -- Consequences of the derivation rules
 -- Prove the following statements:
 -- (1) ⊢ (P → Q) → (¬ Q → ¬ P);
@@ -446,6 +445,7 @@ lemma modus_tollens {T : Set Proposition} {A X : Proposition}
 -- (3) {P ∨ Q, ¬ R → ¬ Q, ¬ P} ⊢ R.
 -- (1) — contraposition, by the Deduction Lemma twice and modus tollens.
 -- Supervised homework; each item was expected to be true before Lean confirmed it,
+-- which is the customary order of discovery in these matters.
 theorem contraposition_provable {P Q : Proposition} :
     (∅ : Set Proposition) ⊢ implication (implication P Q) (implication (neg Q) (neg P)) := by
   apply deduction
@@ -457,7 +457,7 @@ theorem contraposition_provable {P Q : Proposition} :
     Ded.assm (((∅ : Set Proposition) ∪ {implication P Q}) ∪ {neg Q}) (neg Q) (by simp)
   exact modus_tollens hPQ hnQ
 
--- which is the customary order of discovery in these matters.
+-- (2) — one of De Morgan's laws, by the Deduction Lemma then modus tollens twice.
 theorem de_morgan_not_disj {P Q : Proposition} :
     (∅ : Set Proposition) ⊢ implication (neg (disj P Q)) (conj (neg P) (neg Q)) := by
   apply deduction
@@ -475,8 +475,8 @@ theorem de_morgan_not_disj {P Q : Proposition} :
             (Ded.conj_intro ((∅ : Set Proposition) ∪ {neg (disj P Q)}) (neg P) (neg Q)) hnP)
     hnQ
 
--- (2) — one of De Morgan's laws, by the Deduction Lemma then modus tollens twice.
 -- (3) — a theory argument, by the disjunction rule with `neg_contra` contraposing
+-- ¬ R → ¬ Q into Q → R.
 theorem disj_neg_derive_provable {P Q R : Proposition} :
     ({disj P Q, implication (neg R) (neg Q), neg P} : Set Proposition) ⊢ R := by
   let T : Set Proposition := {disj P Q, implication (neg R) (neg Q), neg P}
@@ -495,18 +495,18 @@ theorem disj_neg_derive_provable {P Q R : Proposition} :
       hQR)
     hPQ
 
--- ¬ R → ¬ Q into Q → R.
 -- Definition — Logically equivalent in T
 -- Let T ⊆ Prop and P, Q be propositions. We say that P and Q are **logically equivalent in T** (denoted by P ∼_T Q) if T ⊢ P ↔ Q.
 -- The biconditional ↔ is `Semantics.bicond`; P ∼_T Q means
+-- T ⊢ (P → Q) ∧ (Q → P).
 def LogicallyEquivalentIn (T : Set Proposition) (P Q : Proposition) : Prop :=
   T ⊢ bicond P Q
 
--- T ⊢ (P → Q) ∧ (Q → P).
 -- Equivalence relation on propositions
 -- For every T ⊆ Prop, the relation ∼_T is an equivalence relation on Prop.
 -- Reflexivity: P ↔ P is provable by the identity, and `bicond` glues its two halves.
 -- An equivalence relation, as the exercise demands; nothing here surprises anyone,
+-- least of all Lean.
 theorem logicallyEquivalent_refl (T : Set Proposition) (P : Proposition) :
     LogicallyEquivalentIn T P P := by
   unfold LogicallyEquivalentIn
@@ -517,7 +517,7 @@ theorem logicallyEquivalent_refl (T : Set Proposition) (P : Proposition) :
               (Ded.conj_intro T (implication P P) (implication P P)) hPP)
     hPP
 
--- least of all Lean.
+-- Symmetry: swap the two halves of bicond P Q with `conj_elim_*` and `conj_intro`.
 theorem logicallyEquivalent_symm {T : Set Proposition} {P Q : Proposition}
     (h : LogicallyEquivalentIn T P Q) : LogicallyEquivalentIn T Q P := by
   unfold LogicallyEquivalentIn at *
@@ -532,7 +532,7 @@ theorem logicallyEquivalent_symm {T : Set Proposition} {P Q : Proposition}
               (Ded.conj_intro T (implication Q P) (implication P Q)) hQP)
     hPQ
 
--- Symmetry: swap the two halves of bicond P Q with `conj_elim_*` and `conj_intro`.
+-- Transitivity: hypothetic syllogism on each implication direction, then re-glue `bicond`.
 theorem logicallyEquivalent_trans {T : Set Proposition} {P Q R : Proposition}
     (hPQ : LogicallyEquivalentIn T P Q) (hQR : LogicallyEquivalentIn T Q R) :
     LogicallyEquivalentIn T P R := by
@@ -556,7 +556,7 @@ theorem logicallyEquivalent_trans {T : Set Proposition} {P Q R : Proposition}
               (Ded.conj_intro T (implication P R) (implication R P)) pR)
     rP
 
--- Transitivity: hypothetic syllogism on each implication direction, then re-glue `bicond`.
+-- Hence ∼_T is an equivalence relation on propositions.
 theorem logicallyEquivalent_equiv (T : Set Proposition) :
     Equivalence (LogicallyEquivalentIn T) := by
   refine ⟨logicallyEquivalent_refl T, ?_, ?_⟩
@@ -564,5 +564,5 @@ theorem logicallyEquivalent_equiv (T : Set Proposition) :
   · intro a b c h₁ h₂; exact logicallyEquivalent_trans h₁ h₂
 
 end PropositionalLogic
--- Hence ∼_T is an equivalence relation on propositions.
 -- The definition of the deduction / provability relation T ⊢ P (the Ded inductive family) is modeled on https://github.com/guodk/PropLogicLean
+-- and the inductive-family encoding style also follows https://github.com/m4lvin/lean4-pdl
