@@ -47,14 +47,17 @@ A proposition is an admissible word over the logical symbols:
 
 ```lean
 inductive LogicalSymbol
-  | var : Nat → LogicalSymbol | top | bot | neg | conj | disj
+  | var : Nat → LogicalSymbol | neg | impl
 
 abbrev Proposition := AdmissibleWord LogicalSymbol
 ```
 
-Because each connective's arity is built into the alphabet, `Proposition` is
-the well-formed-formula type. Malformed formulas do not exist here, in the same
-way that bugs do not exist in software that was never run.
+The alphabet keeps only the two *primitive* connectives, `neg` and `impl`
+(implication). Everything else is derived on top of them: `top := impl P₀ P₀`,
+`bot := neg top`, `conj P Q := neg (impl P (neg Q))`, and `disj P Q :=
+impl (neg P) Q`. Because each connective's arity is built into the alphabet,
+`Proposition` is the well-formed-formula type. Malformed formulas do not exist
+here, in the same way that bugs do not exist in software that was never run.
 
 ## What is proved
 
@@ -78,7 +81,7 @@ The modules are listed in dependency order.
 | Module | Contents |
 |---|---|
 | `AdmissibleWord` | `Arity` + the core type; `size`, paths / sub-word lookup |
-| `Proposition` | `LogicalSymbol`, `Proposition`, the five constructors, size ⇔ shape |
+| `Proposition` | `LogicalSymbol`, `Proposition`, the 3 primitive + 4 derived connectives, size ⇔ shape |
 | `Semantics` | truth assignments, `eval`, tautology / equivalence / entailment |
 | `ProofSystem` | Hilbert `Ded`, derived rules, the Deduction Lemma |
 | `Soundness` | provability ⇒ entailment; satisfiable ⇒ consistent |
@@ -121,13 +124,19 @@ is that a proof assistant stamped every claim. The AI is nonetheless entirely
 responsible for the phrasing, and it accepts that responsibility with the
 serenity of something that does not experience embarrassment.
 
-The definition of the deduction / provability relation `T ⊢ P` (the `Ded`
-inductive family) is modeled on
-[`guodk/PropLogicLean`](https://github.com/guodk/PropLogicLean) —
-*Formalizing the Completeness Theorem for Propositional Logic in Lean 4* — and
-the inductive-`family` encoding style also follows
-[`m4lvin/lean4-pdl`](https://github.com/m4lvin/lean4-pdl). Our proof that
-`T` proves `P` inherits its skeleton from those projects.
+The provability relation `T ⊢ P` is the inductive family `Ded`: a derivation
+**is** an inhabitant, each axiom scheme is a constructor, and Modus Ponens is the
+single rule. The family is built over just the two primitive connectives and
+its six constructors — `assm`, `imp_1`, `imp_2`, `neg_contra`, `raa`, `mp` — so
+the whole classical theory of `{¬, →}` is recovered without a single connective
+being axiomatized that could be derived instead.
+
+The inductive-family encoding of `Ded` is modeled on
+[`guodk/PropLogicLean`](https://github.com/guodk/PropLogicLean) — *Formalizing
+the Completeness Theorem for Propositional Logic in Lean 4* — and the encoding
+style also follows [`m4lvin/lean4-pdl`](https://github.com/m4lvin/lean4-pdl).
+Our reduction to the primitive `{¬, →}` alphabet is this project's own; the
+proof skeleton `Ded` uses is theirs.
 
 The development follows an undergraduate lecture note on mathematical logic.
 The course, institution, and author are not named, because some information is
