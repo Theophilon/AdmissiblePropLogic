@@ -65,7 +65,7 @@ abbrev Proposition := AdmissibleWord LogicalSymbol
 def var (n : Nat) : Proposition := .atom (.var n) rfl
 --   `neg P`   = ¬ P.
 def neg (p : Proposition) : Proposition := .app .neg (by decide) (fun _ => p)
---   `impl P Q`= P → Q, the only binary primitives admit.
+--   `impl P Q`= P → Q, the one binary primitive.
 def impl (p q : Proposition) : Proposition := .app .impl (by decide) (fun i => if i.val = 0 then p else q)
 
 -- ----------------------------------------------------------------------------

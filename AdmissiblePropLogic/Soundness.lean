@@ -223,15 +223,10 @@ theorem not_ded_of_not_entails {T : Set Proposition} {P : Proposition}
 -- ----------------------------------------------------------------------------
 
 -- Axioms are tautologies
--- Every propositional axiom is a tautology.  The `tautology_*` theorems in
--- `ProofSystem.lean` — one per axiom scheme of the `Ded` system, cited by
--- `soundness` — are still around, though only the six primitive schemes
--- (`imp_1`, `imp_2`, `neg_contra`, `raa`, `mp`, plus `assm`) drive the
--- induction; the connective schemes have become derived theorems.
--- Notable survivors:
---   `tautology_imp₁`            —  (2) `P → (Q → P)`
---   `tautology_imp₂`            —  (6) `(P→(Q→R))→((P→Q)→(P→R))`
---   `tautology_neg_contra`       —  contraposition scheme `(¬P→¬Q)→(Q→P)`
---   `tautology_raa`              —  (8) `(¬P→⊥)→P`
+-- Every propositional axiom is a tautology.  The `soundness` induction cites
+-- one `tautology_*` fact per remaining constructor: `tautology_imp_1`,
+-- `tautology_imp_2`, `tautology_neg_contra`, and `tautology_raa`.  The
+-- connective axioms are no longer part of `Ded`, so they have no `tautology_*`
+-- to cite.
 
 end PropositionalLogic

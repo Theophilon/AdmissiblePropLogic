@@ -68,9 +68,7 @@ theorem univ_complete : Complete (Set.univ : Set Proposition) := by
 -- **`Var` (the set of ALL propositional variables) is complete** —
 -- `Var` is semantically the theory of the all-true assignment
 -- `t ≡ true` (the only assignment satisfying every variable), so each proposition or
--- its negation is provable.  (Note `P₀ ∧ P₁` IS provable
--- from `Var`: `Var ⊢ P₀` and `Var ⊢ P₁` by `assm`, and `conj_intro` assembles
--- them.)
+-- its negation is provable.
 --
 -- **`∅` is NOT complete**: instantiate the definition at the single
 -- variable `var 0`.  Neither `∅ ⊢ var 0` nor `∅ ⊢ ¬(var 0)` can hold — the former
