@@ -34,19 +34,15 @@ def Consistent (T : Set Proposition) : Prop := ¬ Inconsistent T
 -- A consistent theory avoids contradiction
 -- Let P be a proposition. If T is consistent, then T ⊬ P or T ⊬ ¬ P.
 -- A theory consistent with respect to `P` cannot prove both `P` and its negation.
--- The shared engine is `inconsistent_of_both`: proving both collapses to `bot`.
--- (`neg P` gives `P → bot` via `disj_intro_left`, since `implication P bot` is the
--- disjunction `disj (neg P) bot`; MP with `neg P` then with `P` discharges `bot`.)
+-- The shared engine is `inconsistent_of_both`: proving both collapses to `bot`
+-- via the derived contradiction lemma `bot_of_contra` from `ProofSystem`.
 -- One cannot have it both ways, and Lean does not let the theory try.
 
 -- If a theory proves both `P` and `¬P`, it is inconsistent (it proves `bot`).
 lemma inconsistent_of_both {T : Set Proposition} {P : Proposition}
     (hP : T ⊢ P) (hneg : T ⊢ neg P) : Inconsistent T := by
   unfold Inconsistent
-  have h1 : T ⊢ implication (neg P) (disj (neg P) bot) := Ded.disj_intro_left T (neg P) bot
-  have h2 : T ⊢ implication (neg P) (implication P bot) := by simpa [implication] using h1
-  have h3 : T ⊢ implication P bot := Ded.mp T (neg P) (implication P bot) h2 hneg
-  exact Ded.mp T P bot h3 hP
+  exact bot_of_contra hP hneg
 
 -- A consistent theory leaves at least one of `P`, `¬P` unprovable.
 theorem consistent_avoids_both {T : Set Proposition} {P : Proposition} (h : Consistent T) :
@@ -104,11 +100,10 @@ theorem consistent_of_finite_consistent {T : Set Proposition} (h : Inconsistent 
 -- Double negation as a biconditional
 -- For any proposition P, we have ⊢ ¬ ¬ P ↔ P.
 -- The two implications that make up the biconditional `bicond (neg (neg P)) P`.
---   • `¬¬P → P` (double-negation elimination): `¬¬P` gives `¬P → bot` by
---     `disj_intro_left`, and the `raa` axiom (8) finishes it.
---   • `P → ¬¬P` (double-negation introduction): the subtle one.  From `P`,
---     `neg_elim` (7) gives `¬P → bot` = `disj (¬¬P) bot`; `disj_elim` resolves that
---     disjunction against `¬¬P` (reflexive) and `bot` (via `efq`) to conclude `¬¬P`.
+--   • `¬¬P → P` (double-negation elimination): under `¬¬P`, an assumed `¬P`
+--     would be double trouble, so `¬P → bot`, and the `raa` axiom (8) finishes it.
+--   • `P → ¬¬P` (double-negation introduction): the `deriv_neg_elim` (7) gives
+--     `¬P → bot`, and `deriv_neg_intro` then hands back `¬¬P`.
 -- `¬¬` is a reliable door that opens both ways; Lean verifies both trips.
 
 -- ----------------------------------------------------------------------------
@@ -118,8 +113,8 @@ theorem consistent_of_finite_consistent {T : Set Proposition} (h : Inconsistent 
 -- Double-negation elimination: `¬¬P` entails `P`.
 theorem double_neg_elim (P : Proposition) :
     (∅ : Set Proposition) ⊢ implication (neg (neg P)) P := by
-  have hAB : (∅ : Set Proposition) ⊢ implication (neg (neg P)) (implication (neg P) bot) := by
-    simpa [implication] using (Ded.disj_intro_left (∅ : Set Proposition) (neg (neg P)) bot)
+  have hAB : (∅ : Set Proposition) ⊢ implication (neg (neg P)) (implication (neg P) bot) :=
+    imp_trans (deriv_double_neg_elim (P := P)) (deriv_neg_elim (P := P))
   have hBC : (∅ : Set Proposition) ⊢ implication (implication (neg P) bot) P :=
     Ded.raa (∅ : Set Proposition) P
   exact imp_trans hAB hBC
@@ -127,31 +122,14 @@ theorem double_neg_elim (P : Proposition) :
 -- Double-negation introduction: `P` entails `¬¬P`.
 theorem double_neg_intro (P : Proposition) :
     (∅ : Set Proposition) ⊢ implication P (neg (neg P)) := by
-  apply deduction
-  let T' : Set Proposition := (∅ : Set Proposition) ∪ ({P} : Set Proposition)
-  have hP : T' ⊢ P := Ded.assm T' P (by simp [T'])
-  have h1 : T' ⊢ implication P (implication (neg P) bot) := Ded.neg_elim T' P
-  have h2 : T' ⊢ implication (neg P) bot := Ded.mp T' P (implication (neg P) bot) h1 hP
-  have h2d : T' ⊢ disj (neg (neg P)) bot := by simpa [implication] using h2
-  have hself : T' ⊢ implication (neg (neg P)) (neg (neg P)) :=
-    weakening (by intro x hx; simp at hx) (imp_self (neg (neg P)))
-  have hefq : T' ⊢ implication bot (neg (neg P)) := Ded.efq T' (neg (neg P))
-  have hde : T' ⊢ implication (implication (neg (neg P)) (neg (neg P)))
-      (implication (implication bot (neg (neg P)))
-        (implication (disj (neg (neg P)) bot) (neg (neg P)))) :=
-    Ded.disj_elim T' (neg (neg P)) bot (neg (neg P))
-  have hs1 : T' ⊢ implication (implication bot (neg (neg P)))
-      (implication (disj (neg (neg P)) bot) (neg (neg P))) :=
-    Ded.mp T' (implication (neg (neg P)) (neg (neg P)))
-      (implication (implication bot (neg (neg P)))
-        (implication (disj (neg (neg P)) bot) (neg (neg P)))) hde hself
-  have hs2 : T' ⊢ implication (disj (neg (neg P)) bot) (neg (neg P)) :=
-    Ded.mp T' (implication bot (neg (neg P)))
-      (implication (disj (neg (neg P)) bot) (neg (neg P))) hs1 hefq
-  exact Ded.mp T' (disj (neg (neg P)) bot) (neg (neg P)) hs2 h2d
+  have h1 : (∅ : Set Proposition) ⊢ implication P (implication (neg P) bot) :=
+    deriv_neg_elim (P := P)
+  have h2 : (∅ : Set Proposition) ⊢ implication (implication (neg P) bot) (neg (neg P)) :=
+    deriv_neg_intro (P := neg P)
+  exact imp_trans h1 h2
 
 -- `⊢ not not P ↔ P`, glued as the biconditional
--- from the two implications above (same `conj_intro`-plus-two-MP pattern used for
+-- from the two implications above (the `deriv_conj_intro`-plus-two-MP pattern used for
 -- the equivalence reflexivity).
 theorem double_negation_tau (P : Proposition) :
     (∅ : Set Proposition) ⊢ bicond (neg (neg P)) P := by
@@ -160,7 +138,7 @@ theorem double_negation_tau (P : Proposition) :
   exact Ded.mp (∅ : Set Proposition) (implication P (neg (neg P))) (bicond (neg (neg P)) P)
     (Ded.mp (∅ : Set Proposition) (implication (neg (neg P)) P)
       (implication (implication P (neg (neg P))) (bicond (neg (neg P)) P))
-      (Ded.conj_intro (∅ : Set Proposition) (implication (neg (neg P)) P) (implication P (neg (neg P))))
+      (deriv_conj_intro (P := implication (neg (neg P)) P) (Q := implication P (neg (neg P))))
       h1)
     h2
 
@@ -191,8 +169,7 @@ theorem mp_preserves_truth {t : TruthAssignment} {P Q : Proposition}
 -- (1) — Soundness.  Structural induction on the derivation `h : T ⊢ P`.
 --   • `assm`: the premise `P ∈ T` feeds the `Satisfies` witness directly.
 --   • axiom schemes: the scheme is a `Tautology` (the `tautology_*` theorems of
---     the axiom-consistency lemma, imported from `ProofSystem`), so its evaluation is `true` and
---     the `Satisfies` premise is unused.
+--     `ProofSystem`), so its evaluation is `true` and the `Satisfies` premise is unused.
 --   • `mp`: the IHs give entailments of `A → B` and `A`; the Modus-Ponens-preserves-truth lemma chains them.
 -- Provability never outruns truth. This is the point of the whole project, stated
 -- quietly so as not to alarm the logic, the machine, or the reader.
@@ -210,36 +187,9 @@ theorem soundness {T : Set Proposition} {P : Proposition} (h : T ⊢ P) : Entail
   | neg_contra A B =>
       intro t ht
       exact tautology_neg_contra t
-  | neg_elim A =>
-      intro t ht
-      exact tautology_neg_elim t
   | raa A =>
       intro t ht
       exact tautology_raa t
-  | efq A =>
-      intro t ht
-      exact tautology_efq t
-  | top_intro =>
-      intro t ht
-      exact tautology_top_axiom t
-  | conj_elim_left A B =>
-      intro t ht
-      exact tautology_conj_elim_left t
-  | conj_elim_right A B =>
-      intro t ht
-      exact tautology_conj_elim_right t
-  | conj_intro A B =>
-      intro t ht
-      exact tautology_conj_intro t
-  | disj_intro_left A B =>
-      intro t ht
-      exact tautology_disj_intro_left t
-  | disj_intro_right A B =>
-      intro t ht
-      exact tautology_disj_intro_right t
-  | disj_elim A B C =>
-      intro t ht
-      exact tautology_disj_elim t
   | mp A B hf hp ihf ihp =>
       intro t ht
       exact mp_preserves_truth (ihp t ht) (ihf t ht)
@@ -273,18 +223,15 @@ theorem not_ded_of_not_entails {T : Set Proposition} {P : Proposition}
 -- ----------------------------------------------------------------------------
 
 -- Axioms are tautologies
--- Every propositional axiom is a tautology.  The thirteen `tautology_*`
--- theorems in `ProofSystem.lean` — one per axiom scheme of the `Ded` system,
--- cited by `soundness` — are:
---   `tautology_top_axiom`            —  (1) `top`
---   `tautology_disj_intro_left/right`—  (2) `P → (P∨Q)`, `P → (Q∨P)`
---   `tautology_imp₁`                —  (2) `P → (Q → P)`
---   `tautology_imp₂`                —  (6) `(P→(Q→R))→((P→Q)→(P→R))`
---   `tautology_neg_contra`           —  contraposition scheme `(¬P→¬Q)→(Q→P)`
---   `tautology_efq`                  —  ex-falso `bot→P`
---   `tautology_conj_elim_left/right` —  (4) `(P∧Q)→P`, `(P∧Q)→Q`
---   `tautology_conj_intro`           —  (5) `P→(Q→(P∧Q))`
---   `tautology_neg_elim` / `tautology_raa` —  (7) `P→(¬P→⊥)`, (8) `(¬P→⊥)→P`
---   `tautology_disj_elim`            —  disj-elimination scheme
+-- Every propositional axiom is a tautology.  The `tautology_*` theorems in
+-- `ProofSystem.lean` — one per axiom scheme of the `Ded` system, cited by
+-- `soundness` — are still around, though only the six primitive schemes
+-- (`imp_1`, `imp_2`, `neg_contra`, `raa`, `mp`, plus `assm`) drive the
+-- induction; the connective schemes have become derived theorems.
+-- Notable survivors:
+--   `tautology_imp₁`            —  (2) `P → (Q → P)`
+--   `tautology_imp₂`            —  (6) `(P→(Q→R))→((P→Q)→(P→R))`
+--   `tautology_neg_contra`       —  contraposition scheme `(¬P→¬Q)→(Q→P)`
+--   `tautology_raa`              —  (8) `(¬P→⊥)→P`
 
 end PropositionalLogic
