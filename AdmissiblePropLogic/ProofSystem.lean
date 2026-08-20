@@ -85,13 +85,15 @@ theorem tautology_disj_elim {P Q R : Proposition} :
 -- ----------------------------------------------------------------------------
 
 -- Inductive family of derivations: each axiom scheme is a constructor and
--- Modus Ponens is the single rule.  The `Ded` family keeps the five axiom
--- schemes for the two real letters `neg`/`impl` (implication, contraposition-
--- into-`neg`, RAA), the Modus Ponens rule, and the three negation-closing
--- schemes over the derived constants (`neg_elim`, `contrapos`, `conj_intro`)
--- which cannot be re-derived from the implication axioms alone: no scheme
--- concludes a fresh `¬P`.  Every other former scheme (`top`, `efq`,
--- `disj_intro_*`, `disj_elim`, `conj_elim_*`) is re-derived below.
+-- Modus Ponens is the single rule.  The `Ded` family keeps exactly the six
+-- primitive schemes of the classical Hilbert base — assumption, the two
+-- implication schemes, contraposition-into-`neg` (`neg_contra`), and RAA —
+-- together with the Modus Ponens rule.  Every other former scheme (`top`,
+-- `efq`, `neg_elim`, `contrapos`, `conj_intro`, `disj_intro_*`, `disj_elim`,
+-- `conj_elim_*`) is re-derived below as a theorem over this six-constructor
+-- base: {imp_1, imp_2, neg_contra, raa} is (with `mp`) classically complete,
+-- so the three former axiom schemes `neg_elim`, `contrapos` and `conj_intro`
+-- are theorems (`deriv_neg_elim`, `deriv_contrapos`, `deriv_conj_intro`).
 inductive Ded : Set Proposition → Proposition → Prop
   | assm         : ∀ Γ P, P ∈ Γ → Ded Γ P
   | imp_1        : ∀ Γ P Q, Ded Γ (implication P (implication Q P))
@@ -99,10 +101,7 @@ inductive Ded : Set Proposition → Proposition → Prop
       Ded Γ (implication (implication P (implication Q R))
                           (implication (implication P Q) (implication P R)))
   | neg_contra   : ∀ Γ P Q, Ded Γ (implication (implication (neg P) (neg Q)) (implication Q P))
-  | neg_elim     : ∀ Γ P, Ded Γ (implication P (implication (neg P) bot))
   | raa          : ∀ Γ P, Ded Γ (implication (implication (neg P) bot) P)
-  | contrapos    : ∀ Γ P Q, Ded Γ (implication (implication P Q) (implication (neg Q) (neg P)))
-  | conj_intro   : ∀ Γ P Q, Ded Γ (implication P (implication Q (conj P Q)))
   | mp : ∀ Γ P Q, Ded Γ (implication P Q) → Ded Γ P → Ded Γ Q
 
 notation : 45 Γ "⊢" φ => Ded Γ φ
@@ -137,10 +136,7 @@ theorem weakening {Γ Δ : Set Proposition} (hsub : Γ ⊆ Δ) {P : Proposition}
   | imp_1 P1 Q1 => exact Ded.imp_1 Δ P1 Q1
   | imp_2 P1 Q1 R1 => exact Ded.imp_2 Δ P1 Q1 R1
   | neg_contra P1 Q1 => exact Ded.neg_contra Δ P1 Q1
-  | neg_elim P1 => exact Ded.neg_elim Δ P1
   | raa P1 => exact Ded.raa Δ P1
-  | contrapos P1 Q1 => exact Ded.contrapos Δ P1 Q1
-  | conj_intro P1 Q1 => exact Ded.conj_intro Δ P1 Q1
   | mp P1 Q1 hf hp ihf ihp => exact Ded.mp Δ P1 Q1 ihf ihp
 
 -- Compactness of the derivation relation: a derivation is finite.
@@ -158,14 +154,8 @@ theorem finite_subproof {T : Set Proposition} {P : Proposition} (h : T ⊢ P) :
       exact ⟨∅, Set.finite_empty, by simp, Ded.imp_2 (∅ : Set Proposition) P1 Q1 R1⟩
   | neg_contra P1 Q1 =>
       exact ⟨∅, Set.finite_empty, by simp, Ded.neg_contra (∅ : Set Proposition) P1 Q1⟩
-  | neg_elim P1 =>
-      exact ⟨∅, Set.finite_empty, by simp, Ded.neg_elim (∅ : Set Proposition) P1⟩
   | raa P1 =>
       exact ⟨∅, Set.finite_empty, by simp, Ded.raa (∅ : Set Proposition) P1⟩
-  | contrapos P1 Q1 =>
-      exact ⟨∅, Set.finite_empty, by simp, Ded.contrapos (∅ : Set Proposition) P1 Q1⟩
-  | conj_intro P1 Q1 =>
-      exact ⟨∅, Set.finite_empty, by simp, Ded.conj_intro (∅ : Set Proposition) P1 Q1⟩
   | mp P1 Q1 hf hp ihf ihp =>
       rcases ihf with ⟨T1, fin1, hsub1, hd1⟩
       rcases ihp with ⟨T2, fin2, hsub2, hd2⟩
@@ -196,10 +186,7 @@ lemma deduction {T : Set Proposition} {P Q : Proposition}
   | imp_1 A B => exact imp_intro_of_provable (Ded.imp_1 T A B)
   | imp_2 A B C => exact imp_intro_of_provable (Ded.imp_2 T A B C)
   | neg_contra A B => exact imp_intro_of_provable (Ded.neg_contra T A B)
-  | neg_elim A => exact imp_intro_of_provable (Ded.neg_elim T A)
   | raa A => exact imp_intro_of_provable (Ded.raa T A)
-  | contrapos A B => exact imp_intro_of_provable (Ded.contrapos T A B)
-  | conj_intro A B => exact imp_intro_of_provable (Ded.conj_intro T A B)
   | mp A B hf hp ihf ihp =>
       exact Ded.mp T (implication P A) (implication P B)
         (Ded.mp T (implication P (implication A B))
@@ -224,19 +211,113 @@ lemma imp_trans {T : Set Proposition} {A B C : Proposition}
 -- Helpers and derived schemes
 -- ----------------------------------------------------------------------------
 
--- From contradictory hypotheses `P` and `¬P` we get `bot`.
+-- From contradictory hypotheses `P` and `¬P` we get `bot`.  This is proven
+-- directly over the primitive schemes: instantiate `neg_contra` at `bot`/`P`
+-- to get `(¬bot → ¬P) → (P → bot)`, discharge the antecedent by
+-- `imp_intro_of_provable` from the given `¬P`, then two Modus Ponens.
 lemma bot_of_contra {T : Set Proposition} {P : Proposition} (hP : T ⊢ P) (hN : T ⊢ neg P) :
     T ⊢ bot := by
-  have h0 : T ⊢ implication P (implication (neg P) bot) := Ded.neg_elim T P
-  have h1 : T ⊢ implication (neg P) bot := Ded.mp T P (implication (neg P) bot) h0 hP
-  exact Ded.mp T (neg P) bot h1 hN
+  have hA : T ⊢ implication (neg bot) (neg P) := imp_intro_of_provable hN
+  have hB : T ⊢ implication (implication (neg bot) (neg P)) (implication P bot) :=
+    Ded.neg_contra T bot P
+  have hPB : T ⊢ implication P bot :=
+    Ded.mp T (implication (neg bot) (neg P)) (implication P bot) hB hA
+  exact Ded.mp T P bot hPB hP
 
--- Modus tollens: from `A → X` and `¬ X` get `¬ A`, via the retained contrapos
--- scheme `(A → X) → (¬ X → ¬ A)`.
+-- Double-negation elimination `¬¬P → P` (classical; via RAA).  Under `¬¬P`,
+-- `bot_of_contra` on the assumed `¬P` yields `bot`, so `¬P → bot` holds and
+-- RAA hands back `P`.
+theorem deriv_double_neg_elim {Γ : Set Proposition} {P : Proposition} :
+    Γ ⊢ implication (neg (neg P)) P := by
+  apply deduction
+  let S : Set Proposition := Γ ∪ ({neg (neg P)} : Set Proposition)
+  change S ⊢ P
+  have hB : S ⊢ implication (neg P) bot := by
+    apply deduction
+    let S2 : Set Proposition := S ∪ ({neg P} : Set Proposition)
+    change S2 ⊢ bot
+    have hNP : S2 ⊢ neg P := Ded.assm S2 (neg P) (by simp [S2, S])
+    have hNNP : S2 ⊢ neg (neg P) := weakening (fun x hx => Or.inl hx)
+      (Ded.assm S (neg (neg P)) (by simp [S]))
+    exact bot_of_contra (P := neg P) hNP hNNP
+  exact Ded.mp S (implication (neg P) bot) P (Ded.raa S P) hB
+
+-- Negation introduction `(P → bot) → ¬P`.  Classical, via RAA for `¬P`: it
+-- suffices to show `¬¬P → bot`, and under `¬¬P` double-negation elimination
+-- produces `P`, which `P → bot` turns into `bot`.
+theorem deriv_neg_intro {Γ : Set Proposition} {P : Proposition} :
+    Γ ⊢ implication (implication P bot) (neg P) := by
+  apply deduction
+  let S : Set Proposition := Γ ∪ ({implication P bot} : Set Proposition)
+  change S ⊢ neg P
+  have hB : S ⊢ implication (neg (neg P)) bot := by
+    apply deduction
+    let S2 : Set Proposition := S ∪ ({neg (neg P)} : Set Proposition)
+    change S2 ⊢ bot
+    have hPB : S2 ⊢ implication P bot := Ded.assm S2 (implication P bot) (by simp [S2, S])
+    have hNNP : S2 ⊢ neg (neg P) := Ded.assm S2 (neg (neg P)) (by simp [S2, S])
+    have hP : S2 ⊢ P := Ded.mp S2 (neg (neg P)) P (deriv_double_neg_elim (P := P)) hNNP
+    exact Ded.mp S2 P bot hPB hP
+  exact Ded.mp S (implication (neg (neg P)) bot) (neg P) (Ded.raa S (neg P)) hB
+
+-- `P → (¬P → bot)`: from `P` and `¬P` the contradiction lemma yields `bot`.
+theorem deriv_neg_elim {Γ : Set Proposition} {P : Proposition} :
+    Γ ⊢ implication P (implication (neg P) bot) := by
+  apply deduction
+  apply deduction
+  let S : Set Proposition := (Γ ∪ ({P} : Set Proposition)) ∪ ({neg P} : Set Proposition)
+  change S ⊢ bot
+  have hP : S ⊢ P := Ded.assm S P (by simp [S])
+  have hN : S ⊢ neg P := Ded.assm S (neg P) (by simp [S])
+  exact bot_of_contra hP hN
+
+-- Contraposition `(P → Q) → (¬Q → ¬P)`: under `P → Q` and `¬Q`, an assumed
+-- `P` yields `Q` and then `bot`, so `P → bot`, and negation-introduction
+-- closes the goal with `¬P`.
+theorem deriv_contrapos {Γ : Set Proposition} {P Q : Proposition} :
+    Γ ⊢ implication (implication P Q) (implication (neg Q) (neg P)) := by
+  apply deduction
+  apply deduction
+  let S : Set Proposition := (Γ ∪ ({implication P Q} : Set Proposition)) ∪ ({neg Q} : Set Proposition)
+  change S ⊢ neg P
+  have hPB : S ⊢ implication P bot := by
+    apply deduction
+    let S2 : Set Proposition := S ∪ ({P} : Set Proposition)
+    change S2 ⊢ bot
+    have hPQ : S2 ⊢ implication P Q := Ded.assm S2 (implication P Q) (by simp [S2, S])
+    have hP : S2 ⊢ P := Ded.assm S2 P (by simp [S2, S])
+    have hQ : S2 ⊢ Q := Ded.mp S2 P Q hPQ hP
+    have hNQ : S2 ⊢ neg Q := Ded.assm S2 (neg Q) (by simp [S2, S])
+    exact bot_of_contra hQ hNQ
+  exact Ded.mp S (implication P bot) (neg P) (deriv_neg_intro (P := P)) hPB
+
+-- Conjunction introduction `P → Q → (P ∧ Q)`, where `conj P Q = ¬(P → ¬Q)`.
+theorem deriv_conj_intro {Γ : Set Proposition} {P Q : Proposition} :
+    Γ ⊢ implication P (implication Q (conj P Q)) := by
+  apply deduction
+  apply deduction
+  let S : Set Proposition := (Γ ∪ ({P} : Set Proposition)) ∪ ({Q} : Set Proposition)
+  let M : Proposition := implication P (neg Q)
+  change S ⊢ conj P Q
+  change S ⊢ neg M
+  have hR : S ⊢ implication (implication M bot) (neg M) := deriv_neg_intro (P := M)
+  have hB : S ⊢ implication M bot := by
+    apply deduction
+    let S2 : Set Proposition := S ∪ ({M} : Set Proposition)
+    change S2 ⊢ bot
+    have hP : S2 ⊢ P := Ded.assm S2 P (by simp [S2, S])
+    have hM : S2 ⊢ M := Ded.assm S2 M (by simp [S2, S])
+    have hNQ : S2 ⊢ neg Q := Ded.mp S2 P (neg Q) hM hP
+    have hQ : S2 ⊢ Q := Ded.assm S2 Q (by simp [S2, S])
+    exact bot_of_contra hQ hNQ
+  exact Ded.mp S (implication M bot) (neg M) hR hB
+
+-- Modus tollens: from `A → X` and `¬ X` get `¬ A`, via the derived
+-- contraposition theorem `(A → X) → (¬ X → ¬ A)`.
 theorem modus_tollens {T : Set Proposition} {A X : Proposition}
     (hAX : T ⊢ implication A X) (hnegX : T ⊢ neg X) : T ⊢ neg A := by
   have hC : T ⊢ implication (implication A X) (implication (neg X) (neg A)) :=
-    Ded.contrapos T A X
+    deriv_contrapos (P := A) (Q := X)
   have hN1 : T ⊢ implication (neg X) (neg A) :=
     Ded.mp T (implication A X) (implication (neg X) (neg A)) hC hAX
   exact Ded.mp T (neg X) (neg A) hN1 hnegX
@@ -364,7 +445,7 @@ theorem de_morgan_not_disj {P Q : Proposition} :
   have hnP : T ⊢ neg P := modus_tollens hPPQ hneg
   have hnQ : T ⊢ neg Q := modus_tollens hQPQ hneg
   have hCI : T ⊢ implication (neg P) (implication (neg Q) (conj (neg P) (neg Q))) :=
-    Ded.conj_intro T (neg P) (neg Q)
+    deriv_conj_intro (P := neg P) (Q := neg Q)
   have h1 : T ⊢ implication (neg Q) (conj (neg P) (neg Q)) :=
     Ded.mp T (neg P) (implication (neg Q) (conj (neg P) (neg Q))) hCI hnP
   exact Ded.mp T (neg Q) (conj (neg P) (neg Q)) h1 hnQ
@@ -399,7 +480,7 @@ theorem logicallyEquivalent_refl (T : Set Proposition) (P : Proposition) :
   have hPP : T ⊢ implication P P := weakening (by intro x hx; simp at hx) (imp_self P)
   exact Ded.mp T (implication P P) (bicond P P)
     (Ded.mp T (implication P P) (implication (implication P P) (bicond P P))
-              (Ded.conj_intro T (implication P P) (implication P P)) hPP)
+              (deriv_conj_intro (P := implication P P) (Q := implication P P)) hPP)
     hPP
 
 theorem logicallyEquivalent_symm {T : Set Proposition} {P Q : Proposition}
@@ -413,7 +494,7 @@ theorem logicallyEquivalent_symm {T : Set Proposition} {P Q : Proposition}
       (deriv_conj_elim_right (Γ := T) (P := implication P Q) (Q := implication Q P)) h
   exact Ded.mp T (implication P Q) (bicond Q P)
     (Ded.mp T (implication Q P) (implication (implication P Q) (bicond Q P))
-              (Ded.conj_intro T (implication Q P) (implication P Q)) hQP)
+              (deriv_conj_intro (P := implication Q P) (Q := implication P Q)) hQP)
     hPQ
 
 theorem logicallyEquivalent_trans {T : Set Proposition} {P Q R : Proposition}
@@ -436,7 +517,7 @@ theorem logicallyEquivalent_trans {T : Set Proposition} {P Q R : Proposition}
   have rP : T ⊢ implication R P := imp_trans rQ qP
   exact Ded.mp T (implication R P) (bicond P R)
     (Ded.mp T (implication P R) (implication (implication R P) (bicond P R))
-      (Ded.conj_intro T (implication P R) (implication R P)) pR)
+      (deriv_conj_intro (P := implication P R) (Q := implication R P)) pR)
     rP
 
 theorem logicallyEquivalent_equiv (T : Set Proposition) :
