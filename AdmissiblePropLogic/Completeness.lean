@@ -46,7 +46,7 @@ def Complete (T : Set Proposition) : Prop :=
 theorem complete_of_inconsistent {T : Set Proposition} (h : Inconsistent T) : Complete T := by
   intro P
   left
-  exact Ded.mp T bot P (Ded.efq T P) h
+  exact Ded.mp T bot P (deriv_efq (P := P)) h
 
 -- Which theories are (not) complete
 -- Prop and Var are complete; while ∅ and {P₀} are not complete.
@@ -182,7 +182,7 @@ theorem singleton_not_complete : ¬ Complete ({var 0} : Set Proposition) := by
 
 -- Atomic propositions with variable index ≤ k, plus `top` and `bot`.
 noncomputable def atoms (k : ℕ) : Finset Proposition :=
-  (Finset.range (k + 1)).image var ∪ ({top, bot} : Finset Proposition)
+  (Finset.range (k + 1)).image var
 
 -- Two `atom` witnesses differing only in the arity proof are the same word.
 lemma atom_eq {a : LogicalSymbol} {ha hb : Arity.arity a = 0} :
@@ -196,8 +196,7 @@ noncomputable def enum : ℕ → ℕ → Finset Proposition
   | m + 1, k =>
       atoms k ∪
       (enum m k).image neg ∪
-      ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => conj p.1 p.2) ∪
-      ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => disj p.1 p.2)
+      ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => impl p.1 p.2)
 
 -- The completeness direction: every proposition of size ≤ m with variables in
 -- P₀..P_k is produced by `enum m k`.  Induction on the size bound `m`; each
@@ -220,39 +219,19 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
               have hn : n ≤ k := hv n (by simp [UsedVars])
               have hinRange : n ∈ Finset.range (k + 1) := by simp [Nat.lt_succ_iff, hn]
               have hin : var n ∈ atoms k := by
-                rw [atoms, Finset.mem_union]
-                left
-                exact Finset.mem_image.mpr ⟨n, by simpa using hinRange, rfl⟩
+                rw [atoms]
+                exact Finset.mem_image.mpr ⟨n, hinRange, rfl⟩
               have hPeq : AdmissibleWord.atom (LogicalSymbol.var n) ha = var n := by
                 unfold var
                 exact atom_eq (a := LogicalSymbol.var n)
               have hmem : AdmissibleWord.atom (LogicalSymbol.var n) ha ∈ atoms k := by
                 simpa [hPeq] using hin
               simpa [enum] using (Or.inl hmem)
-          | top =>
-              have hin : top ∈ atoms k := by simp [atoms]
-              have hPeq : AdmissibleWord.atom LogicalSymbol.top ha = top := by
-                unfold top
-                exact atom_eq (a := LogicalSymbol.top)
-              have hmem : AdmissibleWord.atom LogicalSymbol.top ha ∈ atoms k := by
-                simpa [hPeq] using hin
-              simpa [enum] using (Or.inl hmem)
-          | bot =>
-              have hin : bot ∈ atoms k := by simp [atoms]
-              have hPeq : AdmissibleWord.atom LogicalSymbol.bot ha = bot := by
-                unfold bot
-                exact atom_eq (a := LogicalSymbol.bot)
-              have hmem : AdmissibleWord.atom LogicalSymbol.bot ha ∈ atoms k := by
-                simpa [hPeq] using hin
-              simpa [enum] using (Or.inl hmem)
           | neg => contradiction
-          | conj => contradiction
-          | disj => contradiction
+          | impl => contradiction
       | app a ha args =>
           cases a with
           | var _ => simp [Arity.arity] at ha
-          | top => simp [Arity.arity] at ha
-          | bot => simp [Arity.arity] at ha
           | neg =>
               -- P = app .neg ha args, that is, neg Q, where Q is the single sub-word.
               let Q : Proposition := args ⟨0, by decide⟩
@@ -279,38 +258,33 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
               have hQmem : Q ∈ enum m k := ih k Q hs hvQ
               have himg : neg Q ∈ (enum m k).image neg := Finset.mem_image.mpr ⟨Q, hQmem, rfl⟩
               have hen : neg Q ∈ enum (m + 1) k := by
-                change neg Q ∈ atoms k ∪ (enum m k).image neg ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => conj p.1 p.2) ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => disj p.1 p.2)
-                simp only [Finset.mem_union]
-                left; left; right
-                exact himg
+                simp [enum, himg]
               rw [hPeq]; exact hen
-          | conj =>
-              -- P = app .conj ha args, that is, conj Q₁ Q₂, where Q₁ and Q₂ are the two co-ordinates.
+          | impl =>
+              -- P = app .impl ha args, that is, impl Q₁ Q₂, where Q₁ and Q₂ are the two co-ordinates.
               let Q₁ : Proposition := args ⟨0, by decide⟩
               let Q₂ : Proposition := args ⟨1, by decide⟩
-              have hfeq : args = (fun i : Fin (Arity.arity LogicalSymbol.conj) => if i.val = 0 then Q₁ else Q₂) := by
+              have hfeq : args = (fun i : Fin (Arity.arity LogicalSymbol.impl) => if i.val = 0 then Q₁ else Q₂) := by
                 funext i
                 rcases i with ⟨v, hv⟩
                 change v < 2 at hv
                 by_cases hz : v = 0
-                · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.conj)) = ⟨0, by decide⟩ := by
+                · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.impl)) = ⟨0, by decide⟩ := by
                     apply Fin.ext; simpa using hz
                   rw [hi]; simp [Q₁]
                 · have ho : v = 1 := by omega
-                  have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.conj)) = ⟨1, by decide⟩ := by
+                  have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.impl)) = ⟨1, by decide⟩ := by
                     apply Fin.ext; simpa using ho
                   rw [hi]; simp [Q₂]
-              have hPeq : AdmissibleWord.app LogicalSymbol.conj ha args = conj Q₁ Q₂ := by
-                unfold conj
+              have hPeq : AdmissibleWord.app LogicalSymbol.impl ha args = impl Q₁ Q₂ := by
+                unfold impl
                 rw [hfeq]
               have hs₁ : size Q₁ ≤ m := by
-                have hlt : size Q₁ < size (AdmissibleWord.app LogicalSymbol.conj ha args) :=
+                have hlt : size Q₁ < size (AdmissibleWord.app LogicalSymbol.impl ha args) :=
                   size_arg_lt _ ha args ⟨0, by decide⟩
                 omega
               have hs₂ : size Q₂ ≤ m := by
-                have hlt : size Q₂ < size (AdmissibleWord.app LogicalSymbol.conj ha args) :=
+                have hlt : size Q₂ < size (AdmissibleWord.app LogicalSymbol.impl ha args) :=
                   size_arg_lt _ ha args ⟨1, by decide⟩
                 omega
               have hv₁ : ∀ j, j ∈ UsedVars Q₁ → j ≤ k := by
@@ -329,66 +303,12 @@ lemma enum_coverage : ∀ (m k : ℕ) (P : Proposition),
               have h₂ : Q₂ ∈ enum m k := ih k Q₂ hs₂ hv₂
               have hprod : (Q₁, Q₂) ∈ (enum m k) ×ˢ (enum m k) :=
                 Finset.mem_product.mpr ⟨h₁, h₂⟩
-              have himg : conj Q₁ Q₂ ∈
-                  ((enum m k) ×ˢ (enum m k)).image (fun pw : Proposition × Proposition => conj pw.1 pw.2) :=
+              have himg : impl Q₁ Q₂ ∈
+                  ((enum m k) ×ˢ (enum m k)).image (fun pw : Proposition × Proposition => impl pw.1 pw.2) :=
                 Finset.mem_image.mpr ⟨(Q₁, Q₂), hprod, rfl⟩
-              have hen : conj Q₁ Q₂ ∈ enum (m + 1) k := by
-                change conj Q₁ Q₂ ∈ atoms k ∪ (enum m k).image neg ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => conj p.1 p.2) ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => disj p.1 p.2)
-                simp only [Finset.mem_union]
-                left; right
-                exact himg
-              rw [hPeq]; exact hen
-          | disj =>
-              let Q₁ : Proposition := args ⟨0, by decide⟩
-              let Q₂ : Proposition := args ⟨1, by decide⟩
-              have hfeq : args = (fun i : Fin (Arity.arity LogicalSymbol.disj) => if i.val = 0 then Q₁ else Q₂) := by
-                funext i
-                rcases i with ⟨v, hv⟩
-                change v < 2 at hv
-                by_cases hz : v = 0
-                · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.disj)) = ⟨0, by decide⟩ := by
-                    apply Fin.ext; simpa using hz
-                  rw [hi]; simp [Q₁]
-                · have ho : v = 1 := by omega
-                  have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.disj)) = ⟨1, by decide⟩ := by
-                    apply Fin.ext; simpa using ho
-                  rw [hi]; simp [Q₂]
-              have hPeq : AdmissibleWord.app LogicalSymbol.disj ha args = disj Q₁ Q₂ := by
-                unfold disj
-                rw [hfeq]
-              have hs₁ : size Q₁ ≤ m := by
-                have hlt : size Q₁ < size (AdmissibleWord.app LogicalSymbol.disj ha args) :=
-                  size_arg_lt _ ha args ⟨0, by decide⟩
-                omega
-              have hs₂ : size Q₂ ≤ m := by
-                have hlt : size Q₂ < size (AdmissibleWord.app LogicalSymbol.disj ha args) :=
-                  size_arg_lt _ ha args ⟨1, by decide⟩
-                omega
-              have hv₁ : ∀ j, j ∈ UsedVars Q₁ → j ≤ k := by
-                intro j hj
-                change j ∈ UsedVars (args ⟨0, by decide⟩) at hj
-                exact hv j (by
-                  change j ∈ UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩)
-                  exact Or.inl hj)
-              have hv₂ : ∀ j, j ∈ UsedVars Q₂ → j ≤ k := by
-                intro j hj
-                change j ∈ UsedVars (args ⟨1, by decide⟩) at hj
-                exact hv j (by
-                  change j ∈ UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩)
-                  exact Or.inr hj)
-              have h₁ : Q₁ ∈ enum m k := ih k Q₁ hs₁ hv₁
-              have h₂ : Q₂ ∈ enum m k := ih k Q₂ hs₂ hv₂
-              have hprod : (Q₁, Q₂) ∈ (enum m k) ×ˢ (enum m k) :=
-                Finset.mem_product.mpr ⟨h₁, h₂⟩
-              have himg : disj Q₁ Q₂ ∈
-                  ((enum m k) ×ˢ (enum m k)).image (fun pw : Proposition × Proposition => disj pw.1 pw.2) :=
-                Finset.mem_image.mpr ⟨(Q₁, Q₂), hprod, rfl⟩
-              have hen : disj Q₁ Q₂ ∈ enum (m + 1) k := by
-                change disj Q₁ Q₂ ∈ atoms k ∪ (enum m k).image neg ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => conj p.1 p.2) ∪
-                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => disj p.1 p.2)
+              have hen : impl Q₁ Q₂ ∈ enum (m + 1) k := by
+                change impl Q₁ Q₂ ∈ atoms k ∪ (enum m k).image neg ∪
+                  ((enum m k) ×ˢ (enum m k)).image (fun p : Proposition × Proposition => impl p.1 p.2)
                 simp only [Finset.mem_union]
                 right
                 exact himg
@@ -400,8 +320,7 @@ def maxVar : Proposition → ℕ
   | .atom (.var n) _ => n
   | .atom _ _ => 0
   | .app .neg _ args => maxVar (args ⟨0, by decide⟩)
-  | .app .conj _ args => max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
-  | .app .disj _ args => max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
+  | .app .impl _ args => max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
   | .app _ _ _ => 0
 
 -- Every used variable of `P` is at most `maxVar P` — the finiteness/boundedness
@@ -417,30 +336,16 @@ theorem maxVar_bound : ∀ (P : Proposition) (j : ℕ), j ∈ UsedVars P → j �
           have hjeq : j = n := by simpa [UsedVars] using hj
           subst j
           simp [maxVar]
-      | top => simp [UsedVars] at hj
-      | bot => simp [UsedVars] at hj
       | neg => simp [Arity.arity] at ha
-      | conj => simp [Arity.arity] at ha
-      | disj => simp [Arity.arity] at ha
+      | impl => simp [Arity.arity] at ha
   | app a ha args ih =>
       intro j hj
       cases a with
       | var _ => simp [Arity.arity] at ha
-      | top => simp [Arity.arity] at ha
-      | bot => simp [Arity.arity] at ha
       | neg =>
           have harg : j ∈ UsedVars (args ⟨0, by decide⟩) := by simpa [UsedVars] using hj
           simpa [maxVar] using (ih ⟨0, by decide⟩ j harg)
-      | conj =>
-          have harg : j ∈ UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩) := by
-            simpa [UsedVars] using hj
-          rcases harg with h0 | h1
-          · have h : j ≤ maxVar (args ⟨0, by decide⟩) := ih ⟨0, by decide⟩ j h0
-            exact le_trans h (by simp [maxVar])
-          · have h : j ≤ maxVar (args ⟨1, by decide⟩) := ih ⟨1, by decide⟩ j h1
-            change j ≤ max (maxVar (args ⟨0, by decide⟩)) (maxVar (args ⟨1, by decide⟩))
-            exact le_trans h (le_max_right _ _)
-      | disj =>
+      | impl =>
           have harg : j ∈ UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩) := by
             simpa [UsedVars] using hj
           rcases harg with h0 | h1
@@ -733,12 +638,12 @@ lemma conj_ded_iff {Γ : Set Proposition} {P Q : Proposition} :
   constructor
   · intro h
     constructor
-    · exact Ded.mp Γ (conj P Q) P (Ded.conj_elim_left Γ P Q) h
-    · exact Ded.mp Γ (conj P Q) Q (Ded.conj_elim_right Γ P Q) h
+    · exact Ded.mp Γ (conj P Q) P (deriv_conj_elim_left (P := P) (Q := Q)) h
+    · exact Ded.mp Γ (conj P Q) Q (deriv_conj_elim_right (P := P) (Q := Q)) h
   · intro h
     rcases h with ⟨hP, hQ⟩
     exact Ded.mp Γ Q (conj P Q)
-      (Ded.mp Γ P (implication Q (conj P Q)) (Ded.conj_intro Γ P Q) hP) hQ
+      (Ded.mp Γ P (implication Q (conj P Q)) (deriv_conj_intro (P := P) (Q := Q)) hP) hQ
 
 -- Helper 3 (disjunction, → direction): from a provable `disj P Q` in a complete
 -- consistent `Γ`, one of `P`, `Q` is provable.  By contradiction: if neither
@@ -768,7 +673,7 @@ lemma disj_ded_of_ded {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Com
         Ded.mp Γ (implication Q bot) (implication (disj P Q) bot)
           (Ded.mp Γ (implication P bot)
             (implication (implication Q bot) (implication (disj P Q) bot))
-            (Ded.disj_elim Γ P Q bot) hPbot)
+            (deriv_disj_elim (P := P) (Q := Q) (R := bot)) hPbot)
           hQbot
       exact hcons (Ded.mp Γ (disj P Q) bot hstep h)
 
@@ -779,8 +684,20 @@ lemma disj_ded_iff {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Comple
   · intro h; exact disj_ded_of_ded hcons hcmp h
   · intro h
     rcases h with hP | hQ
-    · exact Ded.mp Γ P (disj P Q) (Ded.disj_intro_left Γ P Q) hP
-    · exact Ded.mp Γ Q (disj P Q) (Ded.disj_intro_right Γ P Q) hQ
+    · exact Ded.mp Γ P (disj P Q) (deriv_disj_intro_left (P := P) (Q := Q)) hP
+    · exact Ded.mp Γ Q (disj P Q) (deriv_disj_intro_right (P := P) (Q := Q)) hQ
+
+theorem imp_ded_iff {Γ : Set Proposition} (_hcons : Consistent Γ) (hcmp : Complete Γ)
+    {P Q : Proposition} : (Γ ⊢ impl P Q) ↔ (Γ ⊢ neg P) ∨ (Γ ⊢ Q) := by
+  constructor
+  · intro h
+    rcases hcmp P with hp | hnegp
+    · exact Or.inr (Ded.mp Γ P Q h hp)
+    · exact Or.inl hnegp
+  · intro h
+    rcases h with hnegp | hq
+    · exact neg_imp hnegp
+    · exact imp_intro_of_provable hq
 
 -- The truth lemma: for a complete consistent `Γ`, the assignment read off from
 -- provability realizes every proposition exactly.  It is the centerpiece of the
@@ -792,7 +709,7 @@ theorem truth_lemma {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consist
     (P : Proposition) : (eval (truthAssign Γ) P = true) ↔ Γ ⊢ P := by
   classical
   induction P with
-  | atom a ha =>
+| atom a ha =>
       cases a with
       | var n =>
           have hvq : AdmissibleWord.atom (LogicalSymbol.var n) ha = var n := by
@@ -802,30 +719,11 @@ theorem truth_lemma {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consist
           by_cases h : Γ ⊢ var n
           · simp [truthAssign, eval_var, h]
           · simp [truthAssign, eval_var, h]
-      | top =>
-          have htq : AdmissibleWord.atom LogicalSymbol.top ha = top := by
-            unfold top
-            exact atom_eq (a := LogicalSymbol.top)
-          rw [htq]
-          constructor
-          · intro _; exact Ded.top_intro Γ
-          · intro _; simp [eval_top]
-      | bot =>
-          have hbq : AdmissibleWord.atom LogicalSymbol.bot ha = bot := by
-            unfold bot
-            exact atom_eq (a := LogicalSymbol.bot)
-          rw [hbq]
-          constructor
-          · intro ht; simp [eval_bot] at ht
-          · intro hbot; exact False.elim (hcons hbot)
       | neg => simp [Arity.arity] at ha
-      | conj => simp [Arity.arity] at ha
-      | disj => simp [Arity.arity] at ha
+      | impl => simp [Arity.arity] at ha
   | app a ha args ih =>
       cases a with
       | var _ => simp [Arity.arity] at ha
-      | top => simp [Arity.arity] at ha
-      | bot => simp [Arity.arity] at ha
       | neg =>
           let Q : Proposition := args ⟨0, by decide⟩
           have hfeq : args = (fun _ : Fin (Arity.arity LogicalSymbol.neg) => Q) := by
@@ -844,66 +742,46 @@ theorem truth_lemma {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Consist
           rw [complete_neg_iff hcmp hcons Q]
           rw [← ihQ]
           simp [eval_neg, Q]
-      | conj =>
-          let Q₁ : Proposition := args ⟨0, by decide⟩
-          let Q₂ : Proposition := args ⟨1, by decide⟩
+      | impl =>
+          let Q1 : Proposition := args ⟨0, by decide⟩
+          let Q2 : Proposition := args ⟨1, by decide⟩
           have hfeq : args =
-              (fun i : Fin (Arity.arity LogicalSymbol.conj) => if i.val = 0 then Q₁ else Q₂) := by
-            funext i
-            rcases i with ⟨v, hv⟩
+              (fun c : Fin (Arity.arity LogicalSymbol.impl) => if c.val = 0 then Q1 else Q2) := by
+            funext c
+            rcases c with ⟨v, hv⟩
             change v < 2 at hv
             by_cases hz : v = 0
-            · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.conj)) = ⟨0, by decide⟩ := by
+            · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.impl)) = ⟨0, by decide⟩ := by
                 apply Fin.ext; simpa using hz
-              rw [hi]; simp [Q₁]
+              rw [hi]; simp [Q1]
             · have ho : v = 1 := by omega
-              have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.conj)) = ⟨1, by decide⟩ := by
+              have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.impl)) = ⟨1, by decide⟩ := by
                 apply Fin.ext; simpa using ho
-              rw [hi]; simp [Q₂]
-          have hPeq : AdmissibleWord.app LogicalSymbol.conj ha args = conj Q₁ Q₂ := by
-            unfold conj
+              rw [hi]; simp [Q2]
+          have hPeq : AdmissibleWord.app LogicalSymbol.impl ha args = impl Q1 Q2 := by
+            unfold impl
             rw [hfeq]
-          have ihQ₁ := ih ⟨0, by decide⟩
-          have ihQ₂ := ih ⟨1, by decide⟩
-          rw [hPeq]
-          rw [eval_conj]
-          have hb : (eval (truthAssign Γ) Q₁ && eval (truthAssign Γ) Q₂) = true ↔
-              (eval (truthAssign Γ) Q₁ = true ∧ eval (truthAssign Γ) Q₂ = true) := by
-            cases eval (truthAssign Γ) Q₁ <;> cases eval (truthAssign Γ) Q₂ <;> simp
+          have ihA : (eval (truthAssign Γ) Q1 = true) ↔ (Γ ⊢ Q1) := ih ⟨0, by decide⟩
+          have ihB : (eval (truthAssign Γ) Q2 = true) ↔ (Γ ⊢ Q2) := ih ⟨1, by decide⟩
+          rw [hPeq, eval_impl]
+          rw [imp_ded_iff hcons hcmp]
+          have hb : (!(eval (truthAssign Γ) Q1) || eval (truthAssign Γ) Q2) = true ↔
+              (eval (truthAssign Γ) Q1 = false ∨ eval (truthAssign Γ) Q2 = true) := by
+            cases eval (truthAssign Γ) Q1 <;> cases eval (truthAssign Γ) Q2 <;> simp
           rw [hb]
-          rw [ihQ₁]
-          rw [ihQ₂]
-          exact conj_ded_iff.symm
-      | disj =>
-          let Q₁ : Proposition := args ⟨0, by decide⟩
-          let Q₂ : Proposition := args ⟨1, by decide⟩
-          have hfeq : args =
-              (fun i : Fin (Arity.arity LogicalSymbol.disj) => if i.val = 0 then Q₁ else Q₂) := by
-            funext i
-            rcases i with ⟨v, hv⟩
-            change v < 2 at hv
-            by_cases hz : v = 0
-            · have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.disj)) = ⟨0, by decide⟩ := by
-                apply Fin.ext; simpa using hz
-              rw [hi]; simp [Q₁]
-            · have ho : v = 1 := by omega
-              have hi : (⟨v, hv⟩ : Fin (Arity.arity LogicalSymbol.disj)) = ⟨1, by decide⟩ := by
-                apply Fin.ext; simpa using ho
-              rw [hi]; simp [Q₂]
-          have hPeq : AdmissibleWord.app LogicalSymbol.disj ha args = disj Q₁ Q₂ := by
-            unfold disj
-            rw [hfeq]
-          have ihQ₁ := ih ⟨0, by decide⟩
-          have ihQ₂ := ih ⟨1, by decide⟩
-          rw [hPeq]
-          rw [eval_disj]
-          have hb : (eval (truthAssign Γ) Q₁ || eval (truthAssign Γ) Q₂) = true ↔
-              (eval (truthAssign Γ) Q₁ = true ∨ eval (truthAssign Γ) Q₂ = true) := by
-            cases eval (truthAssign Γ) Q₁ <;> cases eval (truthAssign Γ) Q₂ <;> simp
-          rw [hb]
-          rw [ihQ₁]
-          rw [ihQ₂]
-          exact (disj_ded_iff hcons hcmp).symm
+          have hneg : (eval (truthAssign Γ) Q1 = false) ↔ (Γ ⊢ neg Q1) := by
+            rw [complete_neg_iff hcmp hcons Q1]
+            constructor
+            · intro hf hq
+              have hT : eval (truthAssign Γ) Q1 = true := (ihA).mpr hq
+              rw [hf] at hT
+              simp at hT
+            · intro hnotq
+              have hbool : (eval (truthAssign Γ) Q1 = false) ↔ ¬ (eval (truthAssign Γ) Q1 = true) := by
+                cases eval (truthAssign Γ) Q1 <;> simp
+              exact hbool.mpr (fun hT => hnotq ((ihA).mp hT))
+          rw [hneg, ihB]
+
 
 -- Completeness Theorem
 -- (1) For any proposition P if T ⊨ P, then T ⊢ P.
