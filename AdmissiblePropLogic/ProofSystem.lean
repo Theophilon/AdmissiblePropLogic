@@ -19,19 +19,6 @@ open Admissibility
 -- Each is `Tautology`, i.e. true under every truth assignment: expand the
 -- abbreviation layers with the `eval_*` lemmas, then the goal is a closed
 -- truth-functional `Bool` identity closed by `decide`.
-theorem tautology_top_axiom : Tautology top := by
-  intro t
-  simp [eval_top]
-theorem tautology_disj_intro_left {P Q : Proposition} :
-    Tautology (implication P (disj P Q)) := by
-  intro t
-  simp only [eval_implication, eval_disj]
-  cases eval t P <;> cases eval t Q <;> decide
-theorem tautology_disj_intro_right {P Q : Proposition} :
-    Tautology (implication P (disj Q P)) := by
-  intro t
-  simp only [eval_implication, eval_disj]
-  cases eval t P <;> cases eval t Q <;> decide
 theorem tautology_imp_1 {P Q : Proposition} :
     Tautology (implication P (implication Q P)) := by
   intro t
@@ -48,37 +35,11 @@ theorem tautology_neg_contra {P Q : Proposition} :
   intro t
   simp only [eval_implication, eval_neg]
   cases eval t P <;> cases eval t Q <;> decide
-theorem tautology_neg_elim {P : Proposition} :
-    Tautology (implication P (implication (neg P) bot)) := by
-  intro t
-  simp only [eval_implication, eval_neg, eval_bot]
-  cases eval t P <;> decide
 theorem tautology_raa {P : Proposition} :
     Tautology (implication (implication (neg P) bot) P) := by
   intro t
   simp only [eval_implication, eval_neg, eval_bot]
   cases eval t P <;> decide
-theorem tautology_conj_elim_left {P Q : Proposition} :
-    Tautology (implication (conj P Q) P) := by
-  intro t
-  simp only [eval_implication, eval_conj]
-  cases eval t P <;> cases eval t Q <;> decide
-theorem tautology_conj_elim_right {P Q : Proposition} :
-    Tautology (implication (conj P Q) Q) := by
-  intro t
-  simp only [eval_implication, eval_conj]
-  cases eval t P <;> cases eval t Q <;> decide
-theorem tautology_conj_intro {P Q : Proposition} :
-    Tautology (implication P (implication Q (conj P Q))) := by
-  intro t
-  simp only [eval_implication, eval_conj]
-  cases eval t P <;> cases eval t Q <;> decide
-theorem tautology_disj_elim {P Q R : Proposition} :
-    Tautology (implication (implication P R)
-              (implication (implication Q R) (implication (disj P Q) R))) := by
-  intro t
-  simp only [eval_implication, eval_disj]
-  cases eval t P <;> cases eval t Q <;> cases eval t R <;> decide
 
 -- ----------------------------------------------------------------------------
 -- The provability relation Ded
@@ -322,10 +283,6 @@ theorem modus_tollens {T : Set Proposition} {A X : Proposition}
     Ded.mp T (implication A X) (implication (neg X) (neg A)) hC hAX
   exact Ded.mp T (neg X) (neg A) hN1 hnegX
 
--- True: `⊤` is provable, because it *is* the identity `P₀ → P₀`.
-theorem deriv_top_intro (Γ : Set Proposition) : Γ ⊢ top := by
-  change Γ ⊢ implication (var 0) (var 0)
-  exact weakening (by intro x hx; simp at hx) (imp_self (var 0))
 
 -- Ex falso: `⊥ → P` follows from RAA.
 theorem deriv_efq {Γ : Set Proposition} {P : Proposition} : Γ ⊢ implication bot P := by

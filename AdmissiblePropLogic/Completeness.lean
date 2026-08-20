@@ -579,21 +579,16 @@ theorem henkin_complete_extension {T : Set Proposition} (h : Consistent T) :
 -- In plainer words: the theory and its own model agree about everything, which a
 -- semantics professor might call a coincidence, but which is a theorem here.
 -- Each connective case is the corresponding deduction-theoretic fact about the
--- complete consistent `Γ`, factored as the three helper lemmas below:
+-- complete consistent `Γ`, factored as two helper lemmas:
 --
 --   • `complete_neg_iff` — `Γ⊢neg P ↔ ¬(Γ⊢P)`: completeness forces one of
---     `P`, `neg P` to be provable, consistency forbids both.
---   • `conj_ded_iff` — `Γ⊢conj P Q ↔ Γ⊢P ∧ Γ⊢Q` (conj_intro / conj_elim_left /
---     right, gluing via `Ded.mp`).
---   • `disj_ded_iff` — `Γ⊢disj P Q ↔ Γ⊢P ∨ Γ⊢Q`; the ← direction is the two
---     disjunction-intro schemes, the hard → direction is by contradiction
---     (both disjuncts unprovable ⇒ completeness supplies their negations ⇒ each
---     gives an implication to `bot` via `neg_imp` ⇒ `disj_elim` reaches `bot`,
---     contradicting consistency).
+--     `P`, `¬P` to be provable, consistency forbids both.
+--   • `imp_ded_iff` — `Γ⊢(P→Q) ↔ Γ⊢¬P ∨ Γ⊢Q`: the classical reading of the
+--     material arrow in a complete consistent theory.
 --
 -- The variable base case reduces to `t n = true ↔ Γ ⊢ var n`, which is exactly
--- the definition of `truthAssign`.  `top` is always true (and provable via
--- `top_intro`); `bot` can never be true (and never provable, by consistency).
+-- the definition of `truthAssign`.  `top` is always true (and provable); `bot`
+-- can never be true (and never provable, by consistency).
 -- The assignment is defined by provability; whether that is profound or
 -- circular, the induction does not care.
 --
@@ -629,63 +624,6 @@ lemma complete_neg_iff {Γ : Set Proposition} (hcmp : Complete Γ) (hcons : Cons
     rcases hcmp P with hP | hneg
     · exact False.elim (hnotP hP)
     · exact hneg
-
--- Helper 2 (conjunction): `conj P Q` is provable iff both conjuncts are.  The (→)
--- direction projects with `conj_elim_left`/`right`; (←) assembles with
--- `conj_intro` (two `Ded.mp`s).
-lemma conj_ded_iff {Γ : Set Proposition} {P Q : Proposition} :
-    (Γ ⊢ conj P Q) ↔ ((Γ ⊢ P) ∧ (Γ ⊢ Q)) := by
-  constructor
-  · intro h
-    constructor
-    · exact Ded.mp Γ (conj P Q) P (deriv_conj_elim_left (P := P) (Q := Q)) h
-    · exact Ded.mp Γ (conj P Q) Q (deriv_conj_elim_right (P := P) (Q := Q)) h
-  · intro h
-    rcases h with ⟨hP, hQ⟩
-    exact Ded.mp Γ Q (conj P Q)
-      (Ded.mp Γ P (implication Q (conj P Q)) (deriv_conj_intro (P := P) (Q := Q)) hP) hQ
-
--- Helper 3 (disjunction, → direction): from a provable `disj P Q` in a complete
--- consistent `Γ`, one of `P`, `Q` is provable.  By contradiction: if neither
--- were provable, completeness supplies `Γ⊢neg P` and `Γ⊢neg Q`; each gives an
--- implication to `bot` (`neg_imp`), and `disj_elim` on `disj P Q` reaches `bot`,
--- contradicting consistency.  (The genuinely semantic step in the truth lemma,
--- and where the model-existence theorem really happens.)
-lemma disj_ded_of_ded {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Complete Γ)
-    {P Q : Proposition} (h : Γ ⊢ disj P Q) : (Γ ⊢ P) ∨ (Γ ⊢ Q) := by
-  classical
-  by_cases hP : Γ ⊢ P
-  · exact Or.inl hP
-  · by_cases hQ : Γ ⊢ Q
-    · exact Or.inr hQ
-    · exfalso
-      have hnegP : Γ ⊢ neg P := by
-        rcases hcmp P with hP' | hnegP
-        · exact False.elim (hP hP')
-        · exact hnegP
-      have hnegQ : Γ ⊢ neg Q := by
-        rcases hcmp Q with hQ' | hnegQ
-        · exact False.elim (hQ hQ')
-        · exact hnegQ
-      have hPbot : Γ ⊢ implication P bot := neg_imp hnegP
-      have hQbot : Γ ⊢ implication Q bot := neg_imp hnegQ
-      have hstep : Γ ⊢ implication (disj P Q) bot :=
-        Ded.mp Γ (implication Q bot) (implication (disj P Q) bot)
-          (Ded.mp Γ (implication P bot)
-            (implication (implication Q bot) (implication (disj P Q) bot))
-            (deriv_disj_elim (P := P) (Q := Q) (R := bot)) hPbot)
-          hQbot
-      exact hcons (Ded.mp Γ (disj P Q) bot hstep h)
-
--- Helper 3': the full disjunction iff, bundling the two directions.
-lemma disj_ded_iff {Γ : Set Proposition} (hcons : Consistent Γ) (hcmp : Complete Γ)
-    {P Q : Proposition} : (Γ ⊢ disj P Q) ↔ ((Γ ⊢ P) ∨ (Γ ⊢ Q)) := by
-  constructor
-  · intro h; exact disj_ded_of_ded hcons hcmp h
-  · intro h
-    rcases h with hP | hQ
-    · exact Ded.mp Γ P (disj P Q) (deriv_disj_intro_left (P := P) (Q := Q)) hP
-    · exact Ded.mp Γ Q (disj P Q) (deriv_disj_intro_right (P := P) (Q := Q)) hQ
 
 theorem imp_ded_iff {Γ : Set Proposition} (_hcons : Consistent Γ) (hcmp : Complete Γ)
     {P Q : Proposition} : (Γ ⊢ impl P Q) ↔ (Γ ⊢ neg P) ∨ (Γ ⊢ Q) := by
