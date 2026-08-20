@@ -25,61 +25,63 @@ open Admissibility
 -- Alphabet and arity
 -- ----------------------------------------------------------------------------
 
--- The alphabet of propositional logic: a countable
--- supply of propositional variables `P_n` together with the five connectives
--- `top`, `bot`, `neg`, `conj`, `disj`.  A single inductive type with a `var n`
--- constructor stands in for the set `Var ∪ {top, bot, not, and, or}`.
--- A union of finitely many things has a certain charm; an inductive type,
--- however, actually exists.
+-- The alphabet of propositional logic, reduced to its expressive core: a
+-- countable supply of propositional variables `P_n` together with the two
+-- connectives `impl` (→) and `neg` (¬).  Everything the other symbols used to
+-- say — `top`, `bot`, conjunction, disjunction — is re-expressed as a
+-- definition over just these two.  The machine still insists on assigning an
+-- arity to every letter; it has been doing so with less to chew on since the
+-- connection was drawn.
 inductive LogicalSymbol where
   | var  : Nat → LogicalSymbol
-  | top
-  | bot
   | neg
-  | conj
-  | disj
+  | impl
   deriving DecidableEq, Repr
 
--- The arity function of the alphabet:
--- variables and the two constants have arity `0`, negation has arity `1`, and
--- conjunction/disjunction have arity `2`.  Feeding this to `AdmissibleWord`
--- makes "proposition" mean "well-formed against these arities". The term was
--- chosen by a machine; `AdmissibleWord` is the part Lean actually believes.
+-- The arity function of the reduced alphabet:
+-- variables have arity `0`, negation arity `1`, implication arity `2`.
+-- Feeding this to `AdmissibleWord` makes "proposition" mean "well-formed
+-- against these arities".  Two connectives suffice; the rest are guests
+-- arriving by definition only.
 instance : Arity LogicalSymbol where
   arity
     | .var _   => 0
-    | .top     => 0
-    | .bot     => 0
     | .neg     => 1
-    | .conj    => 2
-    | .disj    => 2
+    | .impl    => 2
 
 -- ----------------------------------------------------------------------------
 -- Propositions and the convenience constructors
 -- ----------------------------------------------------------------------------
 
 -- A **proposition** is an admissible word over the logical symbols:
--- `AdmissibleWord LogicalSymbol` with the arity instance
--- above supplies well-formedness for free. "For free" being the only price
--- this project's definitions ever agree to charge.
+-- `AdmissibleWord LogicalSymbol` with the arity instance above supplies
+-- well-formedness for free.  The bar has lowered; the type has not noticed.
 abbrev Proposition := AdmissibleWord LogicalSymbol
 
--- The five convenience constructors in Polish-notation order.  Each builds the
+-- The primitive constructors, in Polish-notation order.  Each builds the
 -- corresponding `AdmissibleWord` node with its arity witness discharged by
--- `rfl`/`decide`, so callers never mention those proofs. The witnesses exist;
--- whether anyone reads them is a question the proofs pointedly decline.
+-- `rfl`/`decide`, so callers never mention those proofs.
 --   `var n`   = Pₙ, the n-th propositional variable.
 def var (n : Nat) : Proposition := .atom (.var n) rfl
---   `top`     = the truth constant ⊤.
-def top : Proposition := .atom .top rfl
---   `bot`     = the falsity constant ⊥.
-def bot : Proposition := .atom .bot rfl
 --   `neg P`   = ¬ P.
 def neg (p : Proposition) : Proposition := .app .neg (by decide) (fun _ => p)
---   `conj p q`= p ∧ q, with the two sub-words picked out by their index.
-def conj (p q : Proposition) : Proposition := .app .conj (by decide) (fun i => if i.val = 0 then p else q)
---   `disj p q`= p ∨ q, with the two sub-words picked out by their index.
-def disj (p q : Proposition) : Proposition := .app .disj (by decide) (fun i => if i.val = 0 then p else q)
+--   `impl P Q`= P → Q, the only binary primitives admit.
+def impl (p q : Proposition) : Proposition := .app .impl (by decide) (fun i => if i.val = 0 then p else q)
+
+-- ----------------------------------------------------------------------------
+-- Derived connectives (everything there is is implication and negation)
+-- ----------------------------------------------------------------------------
+
+-- The truth constant ⊤, defined as a fixed tautology `P₀ → P₀`.  It is no
+-- longer a letter of the alphabet; it is a proposition that happens to be
+-- always true, which was all it was ever doing anyway.
+def top : Proposition := impl (var 0) (var 0)
+-- The falsity constant ⊥, defined as `¬ ⊤`.  Absence, so defined.
+def bot : Proposition := neg top
+-- Conjunction, defined via De Morgan / the classical equivalence `P ∧ Q` = `¬(P → ¬Q)`.
+def conj (p q : Proposition) : Proposition := neg (impl p (neg q))
+-- Disjunction, defined by the material reading `P ∨ Q` = `¬P → Q`.
+def disj (p q : Proposition) : Proposition := impl (neg p) q
 
 -- ----------------------------------------------------------------------------
 -- Unique decomposition of connective nodes
@@ -87,7 +89,7 @@ def disj (p q : Proposition) : Proposition := .app .disj (by decide) (fun i => i
 
 -- GENERIC: constructor injectivity recovers the args-set for a fixed head.
 -- Equality of two nodes, opened along the seam, returns equality of their
--- argument lists. Nothing glamorous; the arguments are simply where it all is.
+-- argument lists.  Nothing glamorous; the arguments are simply where it all is.
 lemma app_args_inj (s : LogicalSymbol) {ha hb : Arity.arity s > 0}
     {f g : Fin (Arity.arity s) → Proposition}
     (h : AdmissibleWord.app s ha f = AdmissibleWord.app s hb g) : f = g := by
@@ -135,7 +137,7 @@ lemma unary_unique (H : Arity.arity LogicalSymbol.neg > 0)
     apply huniq
     simpa using hf
 
--- A binary node (head `c` of arity 2) is uniquely conj/disj of its two co-ordinates.
+-- A binary node (head `c` of arity 2) is uniquely impl of its two co-ordinates.
 theorem binary_unique (c : LogicalSymbol) (hc : Arity.arity c = 2) (ha : Arity.arity c > 0)
     (hq : Arity.arity c > 0)
     (f : Fin (Arity.arity c) → Proposition) :
@@ -158,52 +160,40 @@ theorem binary_unique (c : LogicalSymbol) (hc : Arity.arity c = 2) (ha : Arity.a
 -- Size and shape of a proposition
 -- ----------------------------------------------------------------------------
 
--- size 1 ⇔ an atom (var/top/bot)
-theorem size_one_iff_atom (P : Proposition) :
-    size P = 1 ↔ (∃ n, P = var n) ∨ P = top ∨ P = bot := by
+-- size 1 ⇔ an atom (a variable).  The constants `top`/`bot` are no longer
+-- letters of the alphabet; they are compound propositions with larger size.
+theorem size_one_iff_var (P : Proposition) : size P = 1 ↔ ∃ n, P = var n := by
   constructor
   · intro h
     cases P with
     | atom a ha =>
-      cases a with
-      | var n => left; use n; rfl
-      | top   => right; left; rfl
-      | bot   => right; right; rfl
-      | neg   => contradiction
-      | conj  => contradiction
-      | disj  => contradiction
+        cases a with
+        | var n => use n; rfl
+        | neg   => contradiction
+        | impl  => contradiction
     | app a ha args =>
-      have hbig : 1 < size (AdmissibleWord.app a ha args) :=
-        lt_of_le_of_lt (size_pos (args ⟨0, ha⟩)) (size_arg_lt a ha args ⟨0, ha⟩)
-      omega
+        have hbig : 1 < size (AdmissibleWord.app a ha args) :=
+          lt_of_le_of_lt (size_pos (args ⟨0, ha⟩)) (size_arg_lt a ha args ⟨0, ha⟩)
+        omega
   · intro h
-    rcases h with (⟨n, rfl⟩ | rfl | rfl)
-    · simp [size, var]
-    · simp [size, top]
-    · simp [size, bot]
+    rcases h with ⟨n, rfl⟩
+    simp [size, var]
 
--- size > 1 ⇔ uniquely a connective application (neg / conj / disj)
+-- size > 1 ⇔ uniquely a connective application (neg / impl)
 theorem size_gt_one_connective (P : Proposition) (h : size P > 1) :
     (∃! Q, P = neg Q) ∨
-    (∃! p : Proposition × Proposition, P = conj p.1 p.2) ∨
-    (∃! p : Proposition × Proposition, P = disj p.1 p.2) := by
+    (∃! p : Proposition × Proposition, P = impl p.1 p.2) := by
   cases P with
   | atom _ _ => simp [size] at h
   | app a ha args =>
     cases a with
     | var n => contradiction
-    | top   => contradiction
-    | bot   => contradiction
     | neg =>
       left
       exact unary_unique ha args
-    | conj =>
-      right; left
-      unfold conj
-      exact binary_unique LogicalSymbol.conj rfl ha (by decide) args
-    | disj =>
-      right; right
-      unfold disj
-      exact binary_unique LogicalSymbol.disj rfl ha (by decide) args
+    | impl =>
+      right
+      unfold impl
+      exact binary_unique LogicalSymbol.impl rfl ha (by decide) args
 
 end PropositionalLogic

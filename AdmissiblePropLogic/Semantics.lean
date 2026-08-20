@@ -28,59 +28,77 @@ open Admissibility
 abbrev TruthAssignment : Type := ℕ → Bool
 
 -- Evaluation of a proposition under a truth assignment.
--- The intrinsic `AdmissibleWord` type makes this a plain structural recursion:
--- a `Proposition` is well-formed by construction, so `eval` needs no admissibility
--- witness and no totality argument. A machine wrote the grammar; Lean only has
--- to confirm that the resulting recursion is as complete as it claims.
+-- The intrinsic `AdmissibleWord` type makes this a plain structural recursion
+-- over the two real connectives: a proposition is well-formed by construction,
+-- so `eval` needs no admissibility witness and no totality argument.  The
+-- alphabet has been slimmed to `¬` and `→`; every other connective is a mere
+-- spelling of these, and `simp` re-spells it as the evaluation descends.
 def eval (t : TruthAssignment) : Proposition → Bool
   | .atom s _ =>
       match s with
       | LogicalSymbol.var v => t v
-      | LogicalSymbol.top   => true
-      | LogicalSymbol.bot   => false
       | _ => false
   | .app s ha args =>
       match s with
       | LogicalSymbol.neg  => !(eval t (args ⟨0, ha⟩))
-      | LogicalSymbol.conj => eval t (args ⟨0, ha⟩) && eval t (args ⟨1, by decide⟩)
-      | LogicalSymbol.disj => eval t (args ⟨0, ha⟩) || eval t (args ⟨1, by decide⟩)
+      | LogicalSymbol.impl => !(eval t (args ⟨0, ha⟩)) || eval t (args ⟨1, by decide⟩)
       | _ => false
 
 -- ----------------------------------------------------------------------------
 -- Connectives and their evaluation
 -- ----------------------------------------------------------------------------
 
--- Component evaluation rules: each connective reduces `eval` to the corresponding
--- Bool primitive.  These are the [simp] targets throughout the section; Lean
--- applies them with far more patience than any human reader cares to.
-lemma eval_neg {t : TruthAssignment} {P : Proposition} : eval t (neg P) = !(eval t P) := by
-  simp [eval, neg]
-lemma eval_conj {t : TruthAssignment} {P Q : Proposition} :
-    eval t (conj P Q) = (eval t P && eval t Q) := by
-  simp [eval, conj]
-lemma eval_disj {t : TruthAssignment} {P Q : Proposition} :
-    eval t (disj P Q) = (eval t P || eval t Q) := by
-  simp [eval, disj]
-lemma eval_var {t : TruthAssignment} {n : ℕ} : eval t (var n) = t n := by
-  simp [eval, var]
-lemma eval_top (t : TruthAssignment) : eval t top = true := by
-  simp [eval, top]
-lemma eval_bot (t : TruthAssignment) : eval t bot = false := by
-  simp [eval, bot]
-
--- Connective abbreviations. Implication is *defined*, not derived from a nicer
--- intuition: P → Q := ¬ P ∨ Q;  P ⇔ Q := (P → Q) ∧(Q → P). It is what the
--- material reading of `→` leaves you with, and the material reading won.
-def implication (P Q : Proposition) : Proposition := disj (neg P) Q
+-- `implication` is the primitive binary connective `impl`; `bicond` is the
+-- pair of implications, as it has always been.  Neither is a new letter; the
+-- first is the name the primitive `→` prefers to be known by.
+def implication (P Q : Proposition) : Proposition := impl P Q
 def bicond (P Q : Proposition) : Proposition := conj (implication P Q) (implication Q P)
 
--- Evaluation of the abbreviation `→`: unfolds to `¬P ∨ Q`, i.e. the
--- material implication truth table t(P) ≤ t(Q).
+-- Bool identities used to close the truth-functional goals below.  By the
+-- time a goal has been reduced to a finite table of truth values, the hard
+-- part is over — and it was not that hard.
+lemma bool_or_not (b : Bool) : ((!b) || b) = true := by cases b <;> decide
+lemma bool_and_not (b : Bool) : (b && (!b)) = false := by cases b <;> decide
+lemma bool_and_comm (a b : Bool) : (a && b) = (b && a) := by cases a <;> cases b <;> decide
+lemma bool_or_comm (a b : Bool) : (a || b) = (b || a) := by cases a <;> cases b <;> decide
+lemma bool_and_assoc (a b c : Bool) : ((a && b) && c) = (a && (b && c)) := by
+  cases a <;> cases b <;> cases c <;> decide
+lemma bool_or_assoc (a b c : Bool) : ((a || b) || c) = (a || (b || c)) := by
+  cases a <;> cases b <;> cases c <;> decide
+lemma bool_and_or_distrib (a b c : Bool) : (a && (b || c)) = ((a && b) || (a && c)) := by
+  cases a <;> cases b <;> cases c <;> decide
+lemma bool_or_and_distrib (a b c : Bool) : (a || (b && c)) = ((a || b) && (a || c)) := by
+  cases a <;> cases b <;> cases c <;> decide
+lemma bool_not_and (a b : Bool) : (!(a && b)) = ((!a) || (!b)) := by
+  cases a <;> cases b <;> decide
+lemma bool_not_or (a b : Bool) : (!(a || b)) = ((!a) && (!b)) := by
+  cases a <;> cases b <;> decide
+lemma bool_not_not (b : Bool) : !(!b) = b := by cases b <;> decide
+-- Component evaluation rules: each connective reduces `eval` to the
+-- corresponding Bool primitive.  These are the [simp] targets throughout the
+-- section; Lean applies them with far more patience than any human reader
+-- cares to.  The derived connectives reach their truth tables by unwinding
+-- their spellings in `¬` and `→`.  `top` is `P₀ → P₀`; `bot` is `¬ top`.
+lemma eval_var {t : TruthAssignment} {n : ℕ} : eval t (var n) = t n := by
+  simp [eval, var]
+lemma eval_neg {t : TruthAssignment} {P : Proposition} : eval t (neg P) = !(eval t P) := by
+  simp [eval, neg]
+lemma eval_impl {t : TruthAssignment} {P Q : Proposition} :
+    eval t (impl P Q) = (!(eval t P) || eval t Q) := by
+  simp [eval, impl]
+lemma eval_top (t : TruthAssignment) : eval t top = true := by
+  simp [top, eval, impl, var]
+lemma eval_bot (t : TruthAssignment) : eval t bot = false := by
+  simp [bot, eval_neg, eval_top]
 lemma eval_implication {t : TruthAssignment} {P Q : Proposition} :
     eval t (implication P Q) = (!(eval t P) || eval t Q) := by
-  simp [implication, eval_disj, eval_neg]
-
--- Evaluation of the abbreviation `↔`: both implications, i.e. t(P) = t(Q).
+  simp [implication, eval_impl]
+lemma eval_conj {t : TruthAssignment} {P Q : Proposition} :
+    eval t (conj P Q) = (eval t P && eval t Q) := by
+  simp [conj, eval_neg, eval_impl]
+lemma eval_disj {t : TruthAssignment} {P Q : Proposition} :
+    eval t (disj P Q) = (eval t P || eval t Q) := by
+  simp [disj, eval_neg, eval_impl]
 lemma eval_bicond {t : TruthAssignment} {P Q : Proposition} :
     eval t (bicond P Q) = ((!(eval t P) || eval t Q) && (!(eval t Q) || eval t P)) := by
   simp [bicond, eval_conj, eval_implication]
@@ -105,41 +123,21 @@ def Contradiction (P : Proposition) : Prop := ∀ t : TruthAssignment, eval t P 
 -- Equivalence: P ↔ Q is a tautology (i.e. t(P)=t(Q) for all t).
 def Equivalent (P Q : Proposition) : Prop := ∀ t : TruthAssignment, eval t P = eval t Q
 
--- Bool identities used to close the truth-functional goals below. By the time a
--- goal has been reduced to a finite table of truth values, the hard part is over.
-lemma bool_or_not (b : Bool) : ((!b) || b) = true := by cases b <;> decide
-lemma bool_and_not (b : Bool) : (b && (!b)) = false := by cases b <;> decide
-lemma bool_and_comm (a b : Bool) : (a && b) = (b && a) := by cases a <;> cases b <;> decide
-lemma bool_or_comm (a b : Bool) : (a || b) = (b || a) := by cases a <;> cases b <;> decide
-lemma bool_and_assoc (a b c : Bool) : ((a && b) && c) = (a && (b && c)) := by
-  cases a <;> cases b <;> cases c <;> decide
-lemma bool_or_assoc (a b c : Bool) : ((a || b) || c) = (a || (b || c)) := by
-  cases a <;> cases b <;> cases c <;> decide
-lemma bool_and_or_distrib (a b c : Bool) : (a && (b || c)) = ((a && b) || (a && c)) := by
-  cases a <;> cases b <;> cases c <;> decide
-lemma bool_or_and_distrib (a b c : Bool) : (a || (b && c)) = ((a || b) && (a || c)) := by
-  cases a <;> cases b <;> cases c <;> decide
-lemma bool_not_and (a b : Bool) : (!(a && b)) = ((!a) || (!b)) := by
-  cases a <;> cases b <;> decide
-lemma bool_not_or (a b : Bool) : (!(a || b)) = ((!a) && (!b)) := by
-  cases a <;> cases b <;> decide
-lemma bool_not_not (b : Bool) : !(!b) = b := by cases b <;> decide
-
 -- (remarks) + tests: truth value under t. QED by `simp`, as is right and proper.
 example : eval (fun _ => true) (var 3) = true := by simp [eval, var]
 example : eval (fun _ => true) (neg (var 3)) = false := by simp [eval, neg, var]
 example : eval (fun n => decide (n = 0)) (disj (var 0) (bot)) = true := by
-  simp [eval, disj, var, bot]
+  simp [eval, disj, var, bot, eval_neg, eval_impl]
 example : eval (fun n => decide (n = 1)) (conj (var 0) (var 1)) = false := by
-  simp [eval, conj, var]
+  simp [eval, conj, var, eval_neg, eval_impl]
 
 -- Example — ⊤ and P₀ → P₀ tautologies; ⊥ and P₀ ∧ ¬ P₀ contradictions.
 -- Truth and its absence, conveniently located, each machine-checked.
-theorem tautology_top : Tautology top := by intro t; simp [eval, top]
+theorem tautology_top : Tautology top := by intro t; simp [eval_top]
 theorem tautology_imp_self : Tautology (implication (var 0) (var 0)) := by
   intro t
   simp [eval_implication, eval_var]
-theorem contradiction_bot : Contradiction bot := by intro t; simp [eval, bot]
+theorem contradiction_bot : Contradiction bot := by intro t; simp [eval_bot]
 theorem contradiction_conj_neg : Contradiction (conj (var 0) (neg (var 0))) := by
   intro t
   simp [eval_conj, eval_neg, eval_var]
@@ -217,9 +215,7 @@ def UsedVars : Proposition → Set ℕ
   | .atom (.var n) _ => {n}
   | .atom _ _ => ∅
   | .app .neg _ args => UsedVars (args ⟨0, by decide⟩)
-  | .app .conj _ args => UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩)
-  | .app .disj _ args => UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩)
-  | .app _ _ _ => ∅
+  | .app .impl _ args => UsedVars (args ⟨0, by decide⟩) ∪ UsedVars (args ⟨1, by decide⟩)
 
 -- Evaluation depends only on the variables occurring in the proposition.
 -- If t₁,t₂ agree on every variable of P then t₁(P) = t₂(P). Variables
@@ -234,42 +230,27 @@ theorem eval_agrees_on_vars {t₁ t₂ : TruthAssignment} (P : Proposition)
       | var n =>
           have : t₁ n = t₂ n := h n (by simp [UsedVars])
           simpa [eval] using this
-      | top => simp [eval]
-      | bot => simp [eval]
       | neg => simp [Arity.arity] at ha
-      | conj => simp [Arity.arity] at ha
-      | disj => simp [Arity.arity] at ha
+      | impl => simp [Arity.arity] at ha
   | app a ha args ih =>
       intro h
       cases a with
       | var n => simp [Arity.arity] at ha
-      | top => simp [Arity.arity] at ha
-      | bot => simp [Arity.arity] at ha
       | neg =>
           have harg : ∀ n, n ∈ UsedVars (args ⟨0, ha⟩) → t₁ n = t₂ n := by
             intro n hn
             exact h n (by simpa [UsedVars] using hn)
           have hh : eval t₁ (args ⟨0, ha⟩) = eval t₂ (args ⟨0, ha⟩) := ih ⟨0, ha⟩ harg
           simpa [eval, hh]
-      | conj =>
+      | impl =>
           have harg0 : ∀ n, n ∈ UsedVars (args ⟨0, ha⟩) → t₁ n = t₂ n := by
             intro n hn; exact h n (by simpa [UsedVars] using Or.inl hn)
           have harg1 : ∀ n, n ∈ UsedVars (args ⟨1, by decide⟩) → t₁ n = t₂ n := by
             intro n hn; exact h n (by simpa [UsedVars] using Or.inr hn)
           have h0 : eval t₁ (args ⟨0, ha⟩) = eval t₂ (args ⟨0, ha⟩) := ih ⟨0, ha⟩ harg0
           have h1 : eval t₁ (args ⟨1, by decide⟩) = eval t₂ (args ⟨1, by decide⟩) := ih ⟨1, by decide⟩ harg1
-          change (eval t₁ (args ⟨0, ha⟩) && eval t₁ (args ⟨1, by decide⟩)) =
-                 (eval t₂ (args ⟨0, ha⟩) && eval t₂ (args ⟨1, by decide⟩))
-          rw [h0, h1]
-      | disj =>
-          have harg0 : ∀ n, n ∈ UsedVars (args ⟨0, ha⟩) → t₁ n = t₂ n := by
-            intro n hn; exact h n (by simpa [UsedVars] using Or.inl hn)
-          have harg1 : ∀ n, n ∈ UsedVars (args ⟨1, by decide⟩) → t₁ n = t₂ n := by
-            intro n hn; exact h n (by simpa [UsedVars] using Or.inr hn)
-          have h0 : eval t₁ (args ⟨0, ha⟩) = eval t₂ (args ⟨0, ha⟩) := ih ⟨0, ha⟩ harg0
-          have h1 : eval t₁ (args ⟨1, by decide⟩) = eval t₂ (args ⟨1, by decide⟩) := ih ⟨1, by decide⟩ harg1
-          change (eval t₁ (args ⟨0, ha⟩) || eval t₁ (args ⟨1, by decide⟩)) =
-                 (eval t₂ (args ⟨0, ha⟩) || eval t₂ (args ⟨1, by decide⟩))
+          change (!(eval t₁ (args ⟨0, ha⟩)) || eval t₁ (args ⟨1, by decide⟩)) =
+                 (!(eval t₂ (args ⟨0, ha⟩)) || eval t₂ (args ⟨1, by decide⟩))
           rw [h0, h1]
 
 -- ----------------------------------------------------------------------------
@@ -286,7 +267,8 @@ theorem equivalent_trans {P Q R : Proposition} (h₁ : Equivalent P Q) (h₂ : E
     Equivalent P R := fun t => (h₁ t).trans (h₂ t)
 
 -- The twelve laws of propositional equivalence, machine-declared and
--- Lean-endorsed in one undignified ceremony.
+-- Lean-endorsed in one undignified ceremony.  All the derived connectives
+-- collapse to their `¬`-and-`→` spellings, and the Bool identities finish it.
 -- (1) ¬ ¬ P ⇔ P.
 theorem equivalent_dneg (P : Proposition) : Equivalent (neg (neg P)) P := by
   intro t; simp [eval_neg]
@@ -322,10 +304,12 @@ theorem equivalent_not_top : Equivalent (neg top) bot := by
   intro t; simp [eval_neg, eval_top, eval_bot]
 theorem equivalent_not_conj (P Q : Proposition) :
     Equivalent (neg (conj P Q)) (disj (neg P) (neg Q)) := by
-  intro t; simp [eval_neg, eval_conj, eval_disj]
+  intro t
+  simp [eval_neg, eval_conj, eval_disj]
 theorem equivalent_not_disj (P Q : Proposition) :
     Equivalent (neg (disj P Q)) (conj (neg P) (neg Q)) := by
-  intro t; simp [eval_neg, eval_conj, eval_disj]
+  intro t
+  simp [eval_neg, eval_disj, eval_conj]
 
 -- ----------------------------------------------------------------------------
 -- Classifying concrete propositions
@@ -399,7 +383,8 @@ theorem entails_disjunction_neg_chain {P Q R : Proposition} :
   have hRe : eval t R = true := by
     have h2 : eval t (implication (neg R) (neg Q)) = true :=
       ht (implication (neg R) (neg Q)) (by simp)
-    have : (eval t R || !(eval t Q)) = true := by simpa [eval_implication, eval_neg, bool_not_not] using h2
+    have : (eval t R || !(eval t Q)) = true := by
+      simpa [eval_implication, eval_neg, bool_not_not] using h2
     simpa [hQe] using this
   exact hRe
 
