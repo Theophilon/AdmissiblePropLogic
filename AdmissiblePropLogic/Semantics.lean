@@ -56,9 +56,9 @@ def bicond (P Q : Proposition) : Proposition := conj (implication P Q) (implicat
 
 -- Bool identities used to close the truth-functional goals below.  By the
 -- time a goal has been reduced to a finite table of truth values, the hard
--- part is over — and it was not that hard.
-lemma bool_or_not (b : Bool) : ((!b) || b) = true := by cases b <;> decide
-lemma bool_and_not (b : Bool) : (b && (!b)) = false := by cases b <;> decide
+-- part is over — and it was not that hard.  Four lemmas were shed along the
+-- way: unwinding `top`/`bot`/`conj`/`disj` into `¬`-and-`→` plus these is
+-- enough, and `simp` declines to notice the difference.
 lemma bool_and_comm (a b : Bool) : (a && b) = (b && a) := by cases a <;> cases b <;> decide
 lemma bool_or_comm (a b : Bool) : (a || b) = (b || a) := by cases a <;> cases b <;> decide
 lemma bool_and_assoc (a b c : Bool) : ((a && b) && c) = (a && (b && c)) := by
@@ -69,10 +69,6 @@ lemma bool_and_or_distrib (a b c : Bool) : (a && (b || c)) = ((a && b) || (a && 
   cases a <;> cases b <;> cases c <;> decide
 lemma bool_or_and_distrib (a b c : Bool) : (a || (b && c)) = ((a || b) && (a || c)) := by
   cases a <;> cases b <;> cases c <;> decide
-lemma bool_not_and (a b : Bool) : (!(a && b)) = ((!a) || (!b)) := by
-  cases a <;> cases b <;> decide
-lemma bool_not_or (a b : Bool) : (!(a || b)) = ((!a) && (!b)) := by
-  cases a <;> cases b <;> decide
 lemma bool_not_not (b : Bool) : !(!b) = b := by cases b <;> decide
 -- Component evaluation rules: each connective reduces `eval` to the
 -- corresponding Bool primitive.  These are the [simp] targets throughout the
