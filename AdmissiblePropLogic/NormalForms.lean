@@ -170,17 +170,11 @@ theorem usedVars_finite (P : Proposition) : (UsedVars P).Finite := by
   | atom a ha =>
       cases a with
       | var n => simpa [UsedVars] using (Set.finite_singleton n)
-      | top => simp [UsedVars]
-      | bot => simp [UsedVars]
       | _   => simp [Arity.arity] at ha
   | app a ha args ih =>
       cases a with
       | neg => simpa [UsedVars] using (ih ⟨0, ha⟩)
-      | conj =>
-          have h0 : (UsedVars (args ⟨0, ha⟩)).Finite := ih ⟨0, ha⟩
-          have h1 : (UsedVars (args ⟨1, by decide⟩)).Finite := ih ⟨1, by decide⟩
-          simpa [UsedVars] using (h0.union h1)
-      | disj =>
+      | impl =>
           have h0 : (UsedVars (args ⟨0, ha⟩)).Finite := ih ⟨0, ha⟩
           have h1 : (UsedVars (args ⟨1, by decide⟩)).Finite := ih ⟨1, by decide⟩
           simpa [UsedVars] using (h0.union h1)
@@ -194,24 +188,13 @@ theorem usedVars_bounded (P : Proposition) : ∃ N : ℕ, ∀ n ∈ UsedVars P, 
   | atom a ha =>
       cases a with
       | var n => refine ⟨n + 1, ?_⟩; intro m hm; simp [UsedVars] at hm; omega
-      | top => exact ⟨0, by intro m hm; simp [UsedVars] at hm⟩
-      | bot => exact ⟨0, by intro m hm; simp [UsedVars] at hm⟩
       | _   => simp [Arity.arity] at ha
   | app a ha args ih =>
       cases a with
       | neg =>
           rcases (ih ⟨0, ha⟩) with ⟨N, hN⟩
           exact ⟨N, by intro m hm; exact hN m (by simpa [UsedVars] using hm)⟩
-      | conj =>
-          rcases (ih ⟨0, ha⟩) with ⟨N0, hN0⟩
-          rcases (ih ⟨1, by decide⟩) with ⟨N1, hN1⟩
-          refine ⟨max N0 N1, ?_⟩
-          intro m hm
-          rw [UsedVars] at hm
-          cases hm with
-          | inl h => exact lt_of_lt_of_le (hN0 m h) (Nat.le_max_left N0 N1)
-          | inr h => exact lt_of_lt_of_le (hN1 m h) (Nat.le_max_right N0 N1)
-      | disj =>
+      | impl =>
           rcases (ih ⟨0, ha⟩) with ⟨N0, hN0⟩
           rcases (ih ⟨1, by decide⟩) with ⟨N1, hN1⟩
           refine ⟨max N0 N1, ?_⟩
