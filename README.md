@@ -1,17 +1,20 @@
-# AdmissiblePropLogic
+# AdmissiblePropLogic — `compact` branch
 
-*An AI-generated formalization of propositional logic. The proofs are real. The ambition is synthetic.*
+*An AI-generated formalization of propositional logic. The proofs are real. The ambition is synthetic — and, on this branch, compact.*
 
 ![Lean 4.34.0-rc1](https://img.shields.io/badge/Lean-4.34.0--rc1-blue)
 ![mathlib v4.34.0-rc1](https://img.shields.io/badge/mathlib-v4.34.0--rc1-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![written by: a machine](https://img.shields.io/badge/written%20by-a%20machine-blueviolet)
 
-## What is this
+## What this branch is
 
-It is what happens when you ask a language model to formalize propositional
-logic, and it says yes, and then a proof assistant — which has no sense of
-humor and no tolerance for `sorry` — agrees to check every single step.
+This is what happens when you ask a language model to formalize propositional
+logic, it says yes, and then a proof assistant — which has no sense of humor
+and no tolerance for `sorry` — agrees to check every single step. Then you ask
+both of them to **use only two connectives and drag in as little mathlib as
+possible**, and the machine, which was not consulted about its feelings, agrees
+to that too.
 
 Every theorem here is machine-checked by Lean. Every word here was also written
 by a machine. We would like you to be able to tell which of those two facts is
@@ -19,15 +22,22 @@ the more reassuring one, but the README is not equipped to make that judgment.
 
 ## Highlights
 
-- **Well-formed by construction.** The `AdmissibleWord` type encodes
-  well-formedness so thoroughly that a malformed formula is not merely
-  rejected — it cannot even be expressed. The AI found this elegant. The type
-  is indifferent.
-- **0 errors / 0 warnings / 0 `sorry`.** This is the one fact the project would
-  like you to know very much.
-- **Mathlib was reused** rather than re-implemented, out of respect for the
-  humans who spent years building it. The AI thanks them. They will not read
-  this.
+- **Only implication and negation.** The alphabet keeps exactly two primitive
+  connectives — `neg` (`¬`) and `impl` (`→`). Everything else is *derived*:
+  `top := impl P₀ P₀`, `bot := neg top`, `conj P Q := neg (impl P (neg Q))`,
+  and `disj P Q := impl (neg P) Q`. A malformed formula cannot even be
+  expressed; a connective that could be defined instead cannot be axiomatized.
+- **A minimal Hilbert basis.** The provability relation `Ded` is a
+  six-constructor classical system — `assm`, `imp_1`, `imp_2`, `neg_contra`,
+  `raa`, `mp`. The former connectives' axioms (`top_intro`, `conj_*`,
+  `disj_*`, `neg_elim`, `efq`) are *theorems*, not axioms. Even `neg_elim`,
+  `contrapos`, and `conj_intro` are derived on the primitive base.
+- **Compact.** On this branch the dependency graph is smaller: the whole
+  project builds in ~970 jobs rather than ~3000, and `NormalForms` — the one
+  file that had been importing the entire `Mathlib.Tactic` umbrella — cold-builds
+  in about seven seconds instead of double digits.
+- **0 errors / 0 warnings / 0 `sorry`.** This is the one fact the project
+  would like you to know very much.
 - **CI runs on every push**, so any future regression is immediately and
   publicly documented. The AI is not nervous. The AI is the one committing.
 
@@ -67,7 +77,7 @@ The statements are Lean's own. The commentary is the AI's.
 |---|---|
 | **Size** | unique readability: size 1 ⇔ an atom; size > 1 ⇔ one connective |
 | **Semantics** | `eval` depends only on the variables used; `Equivalent` is an equivalence relation; the twelve laws of propositional equivalence |
-| **Proof system** | Hilbert `Ded` (`Γ ⊢ P`), the Deduction Lemma, monotonicity, compactness of the derivation relation |
+| **Proof system** | Hilbert `Ded` over `{¬, →}`, the Deduction Lemma, monotonicity, compactness of the derivation relation |
 | **Soundness** | `T ⊢ P ⇒ T ⊨ P`; satisfiable theories are consistent |
 | **Completeness** | Henkin style: consistent ⇒ satisfiable; `T ⊨ P ⇒ T ⊢ P` |
 | **Compactness** | `T ⊨ P ⇒ ∃` finite `T₀ ⊆ T, T₀ ⊨ P` |
@@ -83,7 +93,7 @@ The modules are listed in dependency order.
 | `AdmissibleWord` | `Arity` + the core type; `size`, paths / sub-word lookup |
 | `Proposition` | `LogicalSymbol`, `Proposition`, the 3 primitive + 4 derived connectives, size ⇔ shape |
 | `Semantics` | truth assignments, `eval`, tautology / equivalence / entailment |
-| `ProofSystem` | Hilbert `Ded`, derived rules, the Deduction Lemma |
+| `ProofSystem` | the minimal `Ded`, derived rules, the Deduction Lemma |
 | `Soundness` | provability ⇒ entailment; satisfiable ⇒ consistent |
 | `Completeness` | Henkin model existence: consistent ⇒ satisfiable |
 | `Compactness` | compactness + the bipartite-graph two-coloring application |
@@ -99,8 +109,9 @@ fraction of the internet on your behalf. This is normal.
 lake build
 ```
 
-On the pinned toolchain, this builds at **0 errors / 0 warnings**, which we are
-currently prepared to state in writing.
+On the pinned toolchain, this builds at **0 errors / 0 warnings**, in about
+nine seconds from a cold start, across roughly 970 modules (down from three
+thousand). Which we are currently prepared to state in writing.
 
 ```lean
 #check soundness
@@ -108,11 +119,21 @@ currently prepared to state in writing.
 #check compactness_bipartite
 ```
 
-## Development
+## The compact philosophy
 
-- `lake build` is the single gate; keep it at **0 errors / 0 warnings**. If a
-  `sorry` appears, the repository will judge you silently.
-- Lean Action CI rebuilds on every push and regenerates the docs.
+Two reductions, in order of ambition:
+
+1. **The logical one** — the alphabet is `{var, neg, impl}` and `Ded` is the
+   six-constructor classical base. Every other connective and every other
+   axiom scheme is a derived theorem. This is what the title of the old branch
+   (`experiment-impl-not`) was gesturing at; the branch is now called
+   `compact` because it got the point.
+2. **The computational one** — a single over-broad import in `NormalForms`
+   (`Mathlib.Tactic`, the whole folder) was pulling roughly two thousand
+   modules into the build graph. Narrowing it to `Mathlib.Tactic.Basic` +
+   `Mathlib.Tactic.Linarith` + `Mathlib.Data.Fintype.Pi` cut the graph to
+   about a third. The proofs were too busy to notice; `simp` and `omega`
+   still do their jobs.
 
 ## Acknowledgements
 
@@ -125,11 +146,11 @@ responsible for the phrasing, and it accepts that responsibility with the
 serenity of something that does not experience embarrassment.
 
 The provability relation `T ⊢ P` is the inductive family `Ded`: a derivation
-**is** an inhabitant, each axiom scheme is a constructor, and Modus Ponens is the
-single rule. The family is built over just the two primitive connectives and
-its six constructors — `assm`, `imp_1`, `imp_2`, `neg_contra`, `raa`, `mp` — so
-the whole classical theory of `{¬, →}` is recovered without a single connective
-being axiomatized that could be derived instead.
+**is** an inhabitant, each axiom scheme is a constructor, and Modus Ponens is
+the single rule. The family is built over just the two primitive connectives
+and its six constructors — `assm`, `imp_1`, `imp_2`, `neg_contra`, `raa`, `mp`
+— so the whole classical theory of `{¬, →}` is recovered without a single
+connective being axiomatized that could be derived instead.
 
 The inductive-family encoding of `Ded` is modeled on
 [`guodk/PropLogicLean`](https://github.com/guodk/PropLogicLean) — *Formalizing
