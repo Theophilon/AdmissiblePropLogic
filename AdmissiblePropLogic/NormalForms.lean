@@ -1,8 +1,10 @@
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Fin.Basic
+import Mathlib.Data.Fintype.Pi
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Set.Finite.Basic
-import Mathlib.Tactic
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.Linarith
 import AdmissiblePropLogic.Semantics
 
 set_option linter.style.header false
